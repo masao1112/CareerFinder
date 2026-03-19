@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Career Assessment – TechPath AI{% endblock %}
+{% block description %}Take our smart IT career quiz to discover your path and get a personalized roadmap.{% endblock %}
+
+{% block extra_head %}
+<style>
+  .quiz-wrapper {
+    min-height: calc(100vh - 180px);
+    background: linear-gradient(160deg, #f0f4ff 0%, #f8f9fa 60%);
+    padding: 2.5rem 0;
+  }
+  .quiz-card {
+    border-radius: 20px;
+    border: none;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+  }
+  .quiz-header {
+    background: linear-gradient(135deg, var(--navy), var(--navy-light));
+    color: #fff;
+    padding: 1.5rem 2rem;
+  }
+  .quiz-body { padding: 2rem; }
+  .path-option {
+    display: flex;
+    align-items: center;
+    gap: .9rem;
+    padding: .85rem 1.1rem;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all var(--transition);
+    margin-bottom: .55rem;
+    background: #fff;
+  }
+  .path-option:hover { border-color: var(--navy); background: #f0f4ff; }
+  .path-option input[type=radio] { display: none; }
+  .path-option.selected { border-color: var(--navy); background: #f0f4ff; }
+  .path-option input[type=radio]:checked ~ .path-label { color: var(--navy); font-weight: 700; }
+  .path-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--navy); color: #fff; font-size: 1rem; flex-shrink: 0;
+    transition: background var(--transition);
+  }
+  .path-option:hover .path-icon, .path-option.selected .path-icon { background: var(--teal); }
+  .path-label { font-size: .9rem; font-weight: 500; color: #333; }
+  .step-indicator {
+    display: flex; gap: 8px; margin-bottom: 1.5rem;
+    justify-content: center;
+  }
+  .step-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: rgba(255,255,255,.35);
+    transition: background var(--transition), transform var(--transition);
+  }
+  .step-dot.active { background: var(--gold); transform: scale(1.3); }
+  .step-dot.done { background: var(--teal-light); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="quiz-wrapper">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-7 col-xl-6">
+
+        <div class="text-center mb-4 fade-up">
+          <h1 class="fw-800 text-navy mb-1" style="font-size:1.8rem;">IT Career Assessment</h1>
+          <p class="text-muted" style="font-size:.92rem;">Answer honestly – there are no wrong answers.</p>
+        </div>
+
+        <div class="quiz-card card fade-up fade-up-d1">
+          <!-- Quiz Header -->
+          <div class="quiz-header">
+            <div class="step-indicator" id="step-dots">
+              <div class="step-dot active" id="dot-1"></div>
+              <div class="step-dot" id="dot-2"></div>
+              <div class="step-dot" id="dot-3"></div>
+            </div>
+            <h2 class="fw-700 mb-1" style="font-size:1.1rem;" id="quiz-title">
+              Step 1 of 3 — Career Path Selection
+            </h2>
+            <p class="mb-0 opacity-75" style="font-size:.83rem;" id="quiz-subtitle">
+              Choose the IT career path that excites you most right now.
+            </p>
+          </div>
+
+          <!-- Quiz Content (HTMX swap target) -->
+          <div class="quiz-body" id="quiz-container">
+
+            <!-- Part 1: Career Path Selection -->
+            <form hx-post="/assessment/step"
+                  hx-target="#quiz-container"
+                  hx-swap="innerHTML"
+                  hx-on::after-request="updateStep(2)">
+              <input type="hidden" name="current_step" value="1">
+
+              <p class="text-muted mb-3" style="font-size:.88rem; font-style:italic;">
+                "Which IT career path excites you the most right now? (We'll tailor every following question to your choice and keep everything within these 10 high-demand roles.)"
+              </p>
+
+              {% set paths = [
+                ("Software Engineer",        "bi-code-slash"),
+                ("Data Scientist",           "bi-bar-chart-line-fill"),
+                ("Cybersecurity Engineer",   "bi-shield-lock-fill"),
+                ("Web Developer",            "bi-globe2"),
+                ("Systems Administrator",    "bi-server"),
+                ("Cryptographer",            "bi-key-fill"),
+                ("Blockchain Developer",     "bi-link-45deg"),
+                ("Artificial Intelligence (AI) Engineer", "bi-robot"),
+                ("Game Developer",           "bi-controller"),
+                ("Human-Computer Interaction (HCI) Specialist", "bi-cursor-fill"),
+                ("Not yet known – I want TechPath AI to recommend the best fit for me", "bi-question-circle-fill"),
+              ] %}
+
+              {% for path, icon in paths %}
+              <label class="path-option d-flex w-100" id="opt-{{ loop.index }}">
+                <input type="radio" name="selected_path" value="{{ path }}" required
+                       onchange="document.querySelectorAll('.path-option').forEach(el=>el.classList.remove('selected')); this.closest('.path-option').classList.add('selected')">
+                <div class="path-icon">
+                  <i class="bi {{ icon }}"></i>
+                </div>
+                <span class="path-label">{{ path }}</span>
+                {% if loop.last %}
+                <span class="ms-auto badge" style="background:#e0e7ff;color:#3730a3;font-size:.7rem;white-space:nowrap;">AI Picks</span>
+                {% endif %}
+              </label>
+              {% endfor %}
+
+              <div class="d-grid mt-4">
+                <button type="submit" class="btn btn-primary btn-lg py-2" id="next-btn-1">
+                  <i class="bi bi-arrow-right me-2"></i>Continue to Profile
+                  <span class="htmx-indicator spinner-border spinner-border-sm ms-2" role="status"></span>
+                </button>
+              </div>
+            </form>
+
+          </div><!-- /quiz-container -->
+        </div><!-- /quiz-card -->
+
+        <div class="text-center mt-3 text-muted" style="font-size:.78rem;">
+          <i class="bi bi-lock-fill me-1"></i>Your answers are private and not stored beyond this session unless you save your roadmap.
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateStep(step) {
+  const dots = document.querySelectorAll('.step-dot');
+  dots.forEach((d, i) => {
+    d.classList.remove('active', 'done');
+    if (i < step - 1) d.classList.add('done');
+    else if (i === step - 1) d.classList.add('active');
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}TechPath AI – Discover Your IT Career Path{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="section-hero py-5">
+  <div class="container py-4">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6">
+        <div class="fade-up">
+          <span class="badge bg-warning text-dark fw-semibold mb-3 px-3 py-2" style="border-radius:20px; font-size:.78rem; letter-spacing:.04em;">
+            <i class="bi bi-stars me-1"></i>AI-POWERED CAREER MAPPING
+          </span>
+          <h1 class="display-4 fw-800 text-white mb-3" style="line-height:1.1; letter-spacing:-.5px;">
+            Find Your Perfect<br>
+            <span style="color:var(--gold)">IT Career Path</span>
+          </h1>
+          <p class="lead text-white-50 mb-4" style="font-size:1.1rem; line-height:1.7;">
+            Answer 10 smart questions. Get a personalized, step-by-step roadmap tailored to your skills, schedule, and goals — powered by AI and real-world learning resources.
+          </p>
+          <div class="d-flex gap-3 flex-wrap">
+            <a href="/assessment" class="btn btn-gold btn-lg px-4 py-2 shadow">
+              <i class="bi bi-arrow-right-circle-fill me-2"></i>Start Your Roadmap
+            </a>
+            <a href="/roadmap/1" class="btn btn-outline-light btn-lg px-4 py-2">
+              <i class="bi bi-eye me-2"></i>See Demo
+            </a>
+          </div>
+          <div class="d-flex gap-4 mt-4 text-white-50" style="font-size:.82rem;">
+            <span><i class="bi bi-check-circle-fill text-teal me-1" style="color:var(--teal) !important"></i>Free forever</span>
+            <span><i class="bi bi-check-circle-fill text-teal me-1" style="color:var(--teal) !important"></i>10 career paths</span>
+            <span><i class="bi bi-check-circle-fill text-teal me-1" style="color:var(--teal) !important"></i>No account needed</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6 fade-up fade-up-d2">
+        <!-- Animated career card preview -->
+        <div class="card border-0 shadow-lg" style="border-radius:20px; overflow:hidden; max-width:420px; margin:0 auto;">
+          <div class="card-header bg-navy border-0 py-3">
+            <div class="d-flex align-items-center gap-2">
+              <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:#ff5f56"></span>
+              <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:#ffbd2e"></span>
+              <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:#27c93f"></span>
+              <span class="ms-2 text-white opacity-75" style="font-size:.78rem; font-family:monospace;">your-roadmap.ai</span>
+            </div>
+          </div>
+          <div class="card-body p-4" style="background:#fff;">
+            <div class="d-flex align-items-center gap-3 mb-3">
+              <div class="rounded-circle d-flex align-items-center justify-content-center"
+                   style="width:48px;height:48px;background:linear-gradient(135deg,var(--navy),var(--teal));flex-shrink:0;">
+                <i class="bi bi-person-fill text-white fs-5"></i>
+              </div>
+              <div>
+                <div class="fw-700 text-dark" style="font-size:.95rem;">Alice Johnson</div>
+                <div class="text-muted" style="font-size:.78rem;">Software Engineer · 9-month plan</div>
+              </div>
+            </div>
+            <!-- Mini progress ring -->
+            <div class="d-flex align-items-center gap-3 mb-3 p-3 rounded-3" style="background:#f8f9fa;">
+              <svg width="52" height="52" viewBox="0 0 52 52">
+                <circle cx="26" cy="26" r="22" fill="none" stroke="#e9ecef" stroke-width="5"/>
+                <circle cx="26" cy="26" r="22" fill="none" stroke="var(--teal)" stroke-width="5"
+                        stroke-dasharray="138.2" stroke-dashoffset="118.8" stroke-linecap="round"
+                        transform="rotate(-90 26 26)"/>
+                <text x="26" y="31" text-anchor="middle" fill="var(--navy)" font-size="12" font-weight="700">14%</text>
+              </svg>
+              <div>
+                <div class="fw-600 text-dark" style="font-size:.88rem;">Overall Progress</div>
+                <div class="text-muted" style="font-size:.78rem;">Phase 1 of 4 in progress</div>
+              </div>
+            </div>
+            <!-- Mini roadmap preview -->
+            <div class="d-flex flex-column gap-2">
+              {% for item in [
+                ("bi-check-circle-fill", "teal", "Python Foundations", "Complete"),
+                ("bi-record-circle-fill", "warning", "Algorithms & Data Structures", "In Progress"),
+                ("bi-circle", "secondary", "Cloud & Deployment", "Upcoming"),
+              ] %}
+              <div class="d-flex align-items-center gap-2 p-2 rounded-2" style="background:#f8fff9;">
+                <i class="bi {{ item[0] }}" style="color:var(--{{ item[1] }});font-size:1rem;"></i>
+                <span style="font-size:.82rem; font-weight:500;">{{ item[2] }}</span>
+                <span class="ms-auto badge" style="font-size:.7rem; background:{% if item[3] == 'Complete' %}#d1fae5; color:#065f46{% elif item[3] == 'In Progress' %}#fef3c7; color:#92400e{% else %}#f1f5f9; color:#64748b{% endif %};">{{ item[3] }}</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Stats Bar -->
+<section class="py-3 bg-white border-bottom">
+  <div class="container">
+    <div class="row text-center g-3">
+      {% for stat, label, icon in [
+        ("10", "Career Paths", "bi-briefcase-fill"),
+        ("50+", "Curated Resources", "bi-book-fill"),
+        ("5", "Roadmap Phases", "bi-map-fill"),
+        ("100%", "Free to Use", "bi-heart-fill"),
+      ] %}
+      <div class="col-6 col-md-3">
+        <div class="d-flex align-items-center justify-content-center gap-2">
+          <i class="bi {{ icon }} fs-5" style="color:var(--navy);"></i>
+          <div class="text-start">
+            <div class="fw-800 text-navy" style="font-size:1.3rem; line-height:1;">{{ stat }}</div>
+            <div class="text-muted" style="font-size:.75rem;">{{ label }}</div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- Feature Cards -->
+<section class="py-5">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2 class="fw-800 text-navy mb-2" style="font-size:1.9rem;">How TechPath AI Works</h2>
+      <p class="text-muted" style="max-width:520px; margin:0 auto;">Three intelligent steps from <em>confused</em> to <em>clarity</em>.</p>
+    </div>
+    <div class="row g-4">
+      {% for num, icon, title, desc, color in [
+        ("1", "bi-clipboard2-pulse-fill", "Smart Assessment", "Answer targeted questions about your background, schedule, and goals. We adapt every question based on your chosen career path.", "var(--navy)"),
+        ("2", "bi-cpu-fill", "AI-Powered Analysis", "Our AI scores your skills, identifies your gaps, and matches you to the ideal IT career path with percentage confidence scores.", "var(--teal)"),
+        ("3", "bi-map-fill", "Personalized Roadmap", "Get a visual, phase-by-phase learning roadmap with curated free and paid resources, project ideas, and trackable milestones.", "var(--gold-dark)"),
+      ] %}
+      <div class="col-md-4 fade-up" style="animation-delay:{{ loop.index0 * 0.1 }}s">
+        <div class="card h-100 border-0 shadow-sm text-center p-2">
+          <div class="card-body p-4">
+            <div class="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3"
+                 style="width:64px;height:64px;background:{{ color }}1a;border: 2px solid {{ color }}22;">
+              <i class="bi {{ icon }} fs-3" style="color:{{ color }};"></i>
+            </div>
+            <div class="badge rounded-pill mb-2 px-3 py-1" style="background:{{ color }}1a; color:{{ color }}; font-size:.75rem; font-weight:700;">STEP {{ num }}</div>
+            <h3 class="fw-700 mb-2" style="font-size:1.1rem;">{{ title }}</h3>
+            <p class="text-muted mb-0" style="font-size:.88rem; line-height:1.7;">{{ desc }}</p>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- Career Paths Grid -->
+<section class="py-5 bg-white">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2 class="fw-800 text-navy mb-2" style="font-size:1.9rem;">10 High-Demand IT Careers</h2>
+      <p class="text-muted">Pick your path — or let our AI recommend the best fit.</p>
+    </div>
+    <div class="row g-3">
+      {% for path, icon in [
+        ("Software Engineer", "bi-code-slash"),
+        ("Data Scientist", "bi-bar-chart-line-fill"),
+        ("Cybersecurity Engineer", "bi-shield-lock-fill"),
+        ("Web Developer", "bi-globe2"),
+        ("Systems Administrator", "bi-server"),
+        ("Cryptographer", "bi-key-fill"),
+        ("Blockchain Developer", "bi-link-45deg"),
+        ("AI Engineer", "bi-robot"),
+        ("Game Developer", "bi-controller"),
+        ("HCI Specialist", "bi-cursor-fill"),
+      ] %}
+      <div class="col-6 col-md-4 col-lg-3 col-xl-2-4">
+        <a href="/assessment" class="text-decoration-none">
+          <div class="card border-0 text-center p-3 h-100" style="border-radius:14px;">
+            <i class="bi {{ icon }} fs-3 mb-2" style="color:var(--navy);"></i>
+            <div class="fw-600 text-dark" style="font-size:.82rem;">{{ path }}</div>
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="text-center mt-4">
+      <a href="/assessment" class="btn btn-primary btn-lg px-5 py-2 shadow-sm">
+        <i class="bi bi-arrow-right-circle-fill me-2"></i>Take the Assessment
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- CTA Banner -->
+<section class="py-5" style="background:linear-gradient(135deg,var(--navy-dark),var(--navy));">
+  <div class="container text-center py-3">
+    <h2 class="fw-800 text-white mb-2" style="font-size:2rem;">Ready to chart your course?</h2>
+    <p class="text-white-50 mb-4">Join thousands who found clarity with TechPath AI.</p>
+    <a href="/assessment" class="btn btn-gold btn-lg px-5 py-2 shadow">
+      <i class="bi bi-compass-fill me-2"></i>Start Free Assessment
+    </a>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}TechPath AI – Career Compass{% endblock %}</title>
+  <meta name="description" content="{% block description %}TechPath AI helps you discover your IT career path with an intelligent quiz and personalized roadmap.{% endblock %}">
+
+  <!-- Bootstrap 5.3 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --navy:        #0d3b66;
+      --navy-light:  #1a5276;
+      --navy-dark:   #082844;
+      --teal:        #1abc9c;
+      --teal-light:  #48c9b0;
+      --gold:        #f5c842;
+      --gold-dark:   #d4a017;
+      --gold-light:  #fde98e;
+      --gray-soft:   #6c757d;
+      --bg:          #f8f9fa;
+      --card-bg:     #ffffff;
+      --border:      #dee2e6;
+      --text:        #212529;
+      --shadow-sm:   0 2px 8px rgba(13,59,102,.08);
+      --shadow-md:   0 4px 20px rgba(13,59,102,.12);
+      --shadow-lg:   0 8px 40px rgba(13,59,102,.16);
+      --radius:      12px;
+      --transition:  .2s cubic-bezier(.4,0,.2,1);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Navbar ─────────────────────────────────────────────────────── */
+    .navbar {
+      background: var(--navy) !important;
+      box-shadow: 0 2px 16px rgba(0,0,0,.25);
+      padding: .75rem 0;
+    }
+    .navbar-brand {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: -.5px;
+      color: #fff !important;
+    }
+    .navbar-brand .brand-accent { color: var(--gold); }
+    .navbar-tagline {
+      font-size: .7rem;
+      color: rgba(255,255,255,.55);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-top: -2px;
+    }
+    .nav-link {
+      color: rgba(255,255,255,.8) !important;
+      font-weight: 500;
+      font-size: .9rem;
+      transition: color var(--transition);
+    }
+    .nav-link:hover { color: var(--gold) !important; }
+    .navbar .btn-outline-light {
+      border-color: rgba(255,255,255,.4);
+      font-size: .85rem;
+      font-weight: 600;
+    }
+    .navbar .btn-outline-light:hover {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: var(--navy) !important;
+    }
+
+    /* ── Cards ──────────────────────────────────────────────────────── */
+    .card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow var(--transition), transform var(--transition);
+    }
+    .card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    .card-header {
+      border-radius: calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0 !important;
+      font-weight: 700;
+      font-size: .95rem;
+    }
+    .card-header.bg-navy {
+      background: var(--navy) !important;
+      color: #fff;
+    }
+
+    /* ── Buttons ─────────────────────────────────────────────────────── */
+    .btn-primary {
+      background: var(--navy);
+      border-color: var(--navy);
+      font-weight: 600;
+    }
+    .btn-primary:hover, .btn-primary:focus {
+      background: var(--navy-light);
+      border-color: var(--navy-light);
+    }
+    .btn-gold {
+      background: var(--gold);
+      border-color: var(--gold-dark);
+      color: var(--navy-dark);
+      font-weight: 700;
+    }
+    .btn-gold:hover {
+      background: var(--gold-dark);
+      border-color: var(--gold-dark);
+      color: #fff;
+    }
+    .btn-teal {
+      background: var(--teal);
+      border-color: var(--teal);
+      color: #fff;
+      font-weight: 600;
+    }
+    .btn-teal:hover { background: var(--teal-light); border-color: var(--teal-light); }
+
+    /* ── Progress bar ───────────────────────────────────────────────── */
+    .progress { border-radius: 100px; height: 8px; }
+    .progress-bar { background: var(--teal); border-radius: 100px; }
+
+    /* ── Badges ─────────────────────────────────────────────────────── */
+    .badge-free  { background: #d1fae5; color: #065f46; font-size: .72rem; font-weight: 600; border-radius: 6px; padding: 3px 8px; }
+    .badge-paid  { background: #fef3c7; color: #92400e; font-size: .72rem; font-weight: 600; border-radius: 6px; padding: 3px 8px; }
+
+    /* ── Form ──────────────────────────────────────────────────────── */
+    .form-control, .form-select {
+      border-radius: 8px;
+      border-color: var(--border);
+      font-size: .92rem;
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: var(--navy);
+      box-shadow: 0 0 0 3px rgba(13,59,102,.12);
+    }
+    .form-label { font-weight: 600; font-size: .9rem; }
+    .form-check-input:checked { background-color: var(--navy); border-color: var(--navy); }
+
+    /* ── Rating scale ────────────────────────────────────────────────── */
+    .rating-row {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .5rem 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .rating-row:last-child { border-bottom: none; }
+    .rating-label { flex: 1; font-size: .88rem; color: var(--text); }
+    .rating-btns { display: flex; gap: 4px; }
+    .rating-btns input[type=radio] { display: none; }
+    .rating-btns label {
+      width: 34px; height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: .8rem; font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition);
+      background: #fff;
+      color: var(--gray-soft);
+    }
+    .rating-btns input[type=radio]:checked + label {
+      background: var(--navy); border-color: var(--navy); color: #fff;
+    }
+    .rating-btns label:hover { border-color: var(--navy); color: var(--navy); }
+
+    /* ── Footer ─────────────────────────────────────────────────────── */
+    footer {
+      background: var(--navy-dark);
+      color: rgba(255,255,255,.55);
+      font-size: .82rem;
+      padding: 1.5rem 0;
+      margin-top: auto;
+    }
+    footer a { color: var(--gold); text-decoration: none; }
+
+    /* ── HTMX loading indicator ─────────────────────────────────────── */
+    #quiz-container.htmx-request { opacity: .5; transition: opacity .2s; }
+
+    /* ── Utility ─────────────────────────────────────────────────────── */
+    .text-navy { color: var(--navy) !important; }
+    .text-teal  { color: var(--teal) !important; }
+    .text-gold  { color: var(--gold-dark) !important; }
+    .bg-navy    { background: var(--navy) !important; }
+    .section-hero { background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 60%, #1a6b9a 100%); }
+
+    /* ── Animations ──────────────────────────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-up { animation: fadeUp .45s ease both; }
+    .fade-up-d1 { animation-delay: .08s; }
+    .fade-up-d2 { animation-delay: .16s; }
+    .fade-up-d3 { animation-delay: .24s; }
+    .fade-up-d4 { animation-delay: .32s; }
+  </style>
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg">
+    <div class="container">
+      <a class="navbar-brand d-flex flex-column" href="/">
+        <span><i class="bi bi-compass me-2" style="color:var(--gold)"></i>TechPath <span class="brand-accent">AI</span></span>
+        <span class="navbar-tagline">Career Compass</span>
+      </a>
+      <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navmenu">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navmenu">
+        <ul class="navbar-nav ms-auto me-3 gap-1">
+          <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-house me-1"></i>Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="/assessment"><i class="bi bi-clipboard-check me-1"></i>Assessment</a></li>
+          <li class="nav-item"><a class="nav-link" href="/roadmap/1"><i class="bi bi-map me-1"></i>Demo Roadmap</a></li>
+        </ul>
+        <a href="/assessment" class="btn btn-outline-light btn-sm px-3">
+          <i class="bi bi-arrow-right-circle me-1"></i>Start Free
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main content -->
+  <main class="flex-grow-1">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <span><i class="bi bi-compass me-1"></i> TechPath AI &copy; 2026 – Career Compass</span>
+      <span>Built with FastAPI · HTMX · Bootstrap 5</span>
+    </div>
+  </footer>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- HTMX -->
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

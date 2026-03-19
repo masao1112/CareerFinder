@@ -1,0 +1,71 @@
+<!-- Step 4: Job-Specific Technical Skills -->
+<!-- HTMX partial — swapped into #quiz-container -->
+<form action="/api/submit-assessment" method="post">
+  <input type="hidden" name="selected_path" value="{{ selected_path }}">
+
+  <div class="alert border-0 mb-3 py-2 px-3" style="background:#f0f4ff; border-left:4px solid var(--navy) !important; border-radius:10px;">
+    <i class="bi bi-rocket-takeoff-fill me-2" style="color:var(--navy);"></i>
+    <span style="font-size:.85rem; color:var(--navy);">
+      Awesome choice — <strong>{{ selected_path }}</strong>! Let's quickly check where you are today.
+    </span>
+  </div>
+
+  <h5 class="fw-700 text-navy mb-1" style="font-size:1rem;">Part 4 — Job-Specific Skills</h5>
+  <p class="text-muted mb-3" style="font-size:.82rem;">
+    Rate your proficiency: 1 = None &nbsp;·&nbsp; 5 = Expert
+  </p>
+
+  <!-- Skill Rating Grid -->
+  <div class="mb-4">
+    {% for skill in skills %}
+    {% set outer_i = loop.index0 %}
+    <div class="rating-row">
+      <span class="rating-label">{{ skill }}</span>
+      <div class="rating-btns">
+        {% for v in [1,2,3,4,5] %}
+        <input type="radio" name="skill_{{ outer_i }}" id="sk_{{ outer_i }}_{{ v }}" value="{{ v }}" {% if v == 3 %}checked{% endif %}>
+        <label for="sk_{{ outer_i }}_{{ v }}">{{ v }}</label>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Common Closing Questions (always shown) -->
+  <h6 class="fw-700 text-dark mb-3" style="font-size:.9rem; border-top:1px solid #eee; padding-top:1rem;">
+    A few more questions…
+  </h6>
+
+  <div class="mb-3">
+    <label class="form-label">
+      List any additional technical skills or tools you already have
+      <small class="text-muted fw-normal">(optional)</small>
+    </label>
+    <input type="text" class="form-control" name="additional_skills"
+           placeholder="E.g., specific libraries, languages, certifications…">
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">
+      Describe 1–2 projects or work experiences related to this field
+      <small class="text-muted fw-normal">(optional)</small>
+    </label>
+    <textarea class="form-control" name="proud_projects" rows="2"
+              placeholder="Helps us suggest portfolio pieces…"></textarea>
+  </div>
+
+  <div class="mb-4">
+    <label class="form-label">
+      What skills in this role are you most excited to learn?
+    </label>
+    <input type="text" class="form-control" name="excited_to_learn"
+           placeholder="Directly feeds your 'skills to focus on' analysis…">
+  </div>
+
+  <button type="submit" class="btn btn-gold btn-lg w-100 fw-700">
+    <i class="bi bi-cpu-fill me-2"></i>Build My Roadmap
+  </button>
+  <p class="text-center text-muted mt-2 mb-0" style="font-size:.78rem;">
+    <i class="bi bi-clock me-1"></i>Usually takes 2–3 seconds
+  </p>
+</form>

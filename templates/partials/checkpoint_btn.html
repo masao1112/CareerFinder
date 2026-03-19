@@ -1,0 +1,13 @@
+<!-- Checkpoint button partial (HTMX toggle target) -->
+<button class="btn btn-sm {% if checkpoint.is_complete %}btn-teal{% else %}btn-outline-secondary{% endif %} checkpoint-btn"
+        id="cp-btn-{{ checkpoint.id }}"
+        hx-post="/api/checkpoint/{{ checkpoint.id }}/toggle"
+        hx-target="#cp-btn-{{ checkpoint.id }}"
+        hx-swap="outerHTML"
+        title="{% if checkpoint.is_complete %}Mark Incomplete{% else %}Mark Complete{% endif %}">
+  {% if checkpoint.is_complete %}
+  <i class="bi bi-check-circle-fill me-1"></i>Done
+  {% else %}
+  <i class="bi bi-circle me-1"></i>Mark Done
+  {% endif %}
+</button>

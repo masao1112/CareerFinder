@@ -1,0 +1,187 @@
+Part 1 – Career Path Selection (Always asked first – single choice, required)
+Question:
+“Which IT career path excites you the most right now? (We’ll tailor every following question to your choice and keep everything within these 10 high-demand roles.)”
+Options (radio buttons + “Other” disabled to stay in scope):
+Software Engineer
+Data Scientist
+Cybersecurity Engineer
+Web Developer
+Systems Administrator
+Cryptographer
+Blockchain Developer
+Artificial Intelligence (AI) Engineer
+Game Developer
+Human-Computer Interaction (HCI) Specialist
+Not yet known – I want TechPath AI to recommend the best fit for me
+→ Store selection as selected_path (string or enum).
+→ If 1–10 → go to Part 2 (General Profile) + Part 4 (Job-Specific Skills)
+→ If 11 → go to Part 2 (General Profile) + Part 3 (Undecided Discovery)
+Part 2 – General Profile & Time Availability (Asked to EVERY user – common JSON block)
+These questions feed the roadmap pacing and future-work tendency.
+What is your current education / background? (select one + optional text)
+High school / self-taught
+Associate’s / Bootcamp
+Bachelor’s in CS or related
+Master’s / PhD
+Other (please specify)
+How many years of IT / tech experience do you have?
+None
+<1 year
+1–2 years
+3–5 years
+5+ years
+Current situation (select all that apply): □ Full-time job □ Part-time / Freelance □ Student □ Looking for first role □ Career switcher
+Time availability (critical for roadmap) How many hours per week can you realistically dedicate to learning & projects?
+<5 hours
+5–10 hours
+10–15 hours
+15–20 hours
+20+ hours
+Any schedule constraints? (open text, 1–2 sentences) Example prompt: “E.g., evenings only after 8 pm, weekends free, must avoid exam weeks, etc.”
+Future work tendency (select up to 3)
+High salary & stability
+Creative / innovative projects
+Work-life balance & flexibility
+Remote-first lifestyle
+Team collaboration & leadership
+Solo deep technical work
+Entrepreneurship / building products
+Helping people / social impact
+Long-term vision (open text, optional) “In 3–5 years, what does your ideal day look like?” (helps AI suggest transition paths)
+Part 3 – Undecided Discovery Path (Only if option 11 chosen)
+Friendly intro: “No worries! We’ll look at your interests and skills to recommend the single best path from the 10 options and build your roadmap accordingly.”
+A. Interest Matching (1–5 scale, 1 = Not at all, 5 = Extremely excited)
+Rate how much each area excites you:
+Building software apps and systems
+Analyzing data & creating predictive models
+Protecting systems from cyber attacks & ethical hacking
+Designing beautiful, functional websites
+Managing servers, networks & infrastructure
+Deep mathematics & unbreakable encryption
+Blockchain, smart contracts & decentralized tech
+Artificial Intelligence & machine learning
+Creating video games (design + coding)
+User experience, interfaces & usability research
+B. Broad Technical Skills (1–5 proficiency: 1=None, 5=Expert)
+Programming (any language)
+Mathematics / Statistics
+Data handling & analysis
+Networking & systems
+Design / UI principles
+Problem-solving algorithms
+C. Open fields
+List any specific skills or tools you already have (e.g., “Python + Pandas”, “Figma”, “Linux admin”).
+Describe 1–2 projects or experiences you’re proud of (helps portfolio suggestions).
+Any skills you definitely do NOT have yet but would love to learn?
+(The AI Agent will compute match percentages from these scores and auto-select the top 1–2 jobs + explain why.)
+Part 4 – Job-Specific Technical Skills (Only if user chose options 1–10)
+Friendly intro (dynamic): “Awesome choice — [Job Name]! Let’s quickly check where you are today so we can build a realistic, step-by-step roadmap that skips what you already know and focuses on what you don’t.”
+For every job the user receives the exact same format:
+Proficiency Rating (1–5 scale) + two open questions at the end.
+1. Software Engineer
+Rate 1–5:
+Programming (Python/Java/C++/etc.)
+Algorithms & data structures
+Git & version control
+Testing & debugging
+Cloud platforms (AWS/Azure)
+Databases (SQL/NoSQL)
+Clean code & design patterns
+APIs & microservices
+2. Data Scientist
+Python or R
+Statistics & probability
+Machine-learning algorithms
+Data visualization (Tableau/Matplotlib)
+SQL & big-data tools
+Model training & evaluation
+Data cleaning & feature engineering
+Ethics in data science
+3. Cybersecurity Engineer
+Networking fundamentals
+Encryption & cryptographic protocols
+Penetration testing & ethical hacking
+Security tools (Wireshark, Nmap, Metasploit)
+Risk assessment & compliance
+Linux command line & scripting
+Firewall & intrusion detection
+Vulnerability management
+4. Web Developer
+HTML/CSS/JavaScript
+Front-end frameworks (React/Vue)
+Back-end (Node.js/Python/PHP)
+Databases & APIs
+Responsive & mobile-first design
+Version control & deployment
+Web security basics
+Performance optimization
+5. Systems Administrator
+Linux/Windows server admin
+Networking & infrastructure
+Cloud & virtualization
+Automation scripting (Bash/PowerShell)
+Backup & disaster recovery
+Monitoring & troubleshooting
+User access & security
+Containerization (Docker/K8s)
+6. Cryptographer
+Advanced mathematics (number theory/linear algebra)
+Cryptographic algorithms (RSA/AES/ECC)
+Crypto libraries & implementation
+Quantum & post-quantum concepts
+Security proofs & formal verification
+Threat modeling
+Research paper reading
+Blockchain primitives
+7. Blockchain Developer
+Solidity smart contracts
+Ethereum / other blockchain platforms
+Cryptography basics
+DApp front-end integration (Web3.js)
+Consensus mechanisms
+Smart-contract auditing & testing
+Decentralized storage
+Wallet & transaction handling
+8. Artificial Intelligence (AI) Engineer
+Python
+ML/DL frameworks (PyTorch/TensorFlow)
+Neural network design
+Model deployment & MLOps
+Data preprocessing & pipelines
+Computer vision or NLP (optional)
+Responsible AI & ethics
+Cloud AI services
+9. Game Developer
+Game engines (Unity/Unreal/Godot)
+C#/C++/game scripting
+3D modeling & animation
+Physics & game mechanics
+Multiplayer networking
+Graphics & shaders
+Game design & balancing
+Optimization & performance
+10. Human-Computer Interaction (HCI) Specialist
+UX/UI principles
+User research & usability testing
+Prototyping (Figma/Adobe XD)
+Accessibility (WCAG)
+Cognitive psychology basics
+Interaction design patterns
+Heuristic evaluation & A/B testing
+User journey mapping
+Common closing questions for every specific-job path (always shown):
+List any additional technical skills or tools you already have (e.g., specific libraries, languages, certifications).
+Describe 1–2 projects or work experiences related to this field (helps us suggest portfolio pieces).
+What skills in this role do you not have yet but are most excited to learn? (directly feeds “skills you have not” analysis)
+JSON Output Structure the Backend Will Receive
+The entire survey response is saved as one clean JSON object containing:
+selected_path
+general_profile (all Part 2 answers)
+undecided_scores (only if applicable) OR job_specific_ratings + job_specific_opens
+time_hours_per_week + constraints
+This JSON is fed directly to the AI Agent + RAG for match scoring, gap analysis, and the final Systematic Roadmap (phases, milestones, resources, projects, etc.).
+End of Survey
+“Thank you! Your personalized TechPath AI Roadmap is being generated right now — combining your skills, time, and goals with real-world learning resources.”
+This survey document is complete, production-ready, and fully aligned with the TechPath AI architecture described in the project overview. It captures every required characteristic while remaining user-friendly and technically precise.
+
+

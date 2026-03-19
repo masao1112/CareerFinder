@@ -1,0 +1,121 @@
+<!-- Step 2: General Profile & Time Availability -->
+<!-- HTMX partial — swapped into #quiz-container -->
+<form hx-post="/assessment/step"
+      hx-target="#quiz-container"
+      hx-swap="innerHTML"
+      hx-on::after-request="updateStep(3)">
+  <input type="hidden" name="current_step" value="2">
+  <input type="hidden" name="selected_path" value="{{ selected_path }}">
+
+  <div class="alert border-0 mb-4 py-2 px-3" style="background:#f0f4ff; border-left:4px solid var(--navy) !important; border-radius:10px;">
+    <i class="bi bi-compass-fill me-2" style="color:var(--navy);"></i>
+    <strong style="font-size:.88rem; color:var(--navy);">Path selected:</strong>
+    <span style="font-size:.88rem; color:#555;"> {{ selected_path }}</span>
+  </div>
+
+  <h5 class="fw-700 text-navy mb-1" style="font-size:1rem;">Part 2 — General Profile &amp; Time Availability</h5>
+  <p class="text-muted mb-4" style="font-size:.82rem;">These answers fine-tune your roadmap's pacing.</p>
+
+  <!-- Education -->
+  <div class="mb-3">
+    <label class="form-label">What is your current education / background?</label>
+    <select class="form-select" name="education" required>
+      <option value="" disabled selected>Select one…</option>
+      <option>High school / self-taught</option>
+      <option>Associate's / Bootcamp</option>
+      <option>Bachelor's in CS or related</option>
+      <option>Master's / PhD</option>
+      <option>Other</option>
+    </select>
+  </div>
+
+  <!-- Experience -->
+  <div class="mb-3">
+    <label class="form-label">How many years of IT / tech experience do you have?</label>
+    <select class="form-select" name="experience" required>
+      <option value="" disabled selected>Select one…</option>
+      <option>None</option>
+      <option>&lt;1 year</option>
+      <option>1–2 years</option>
+      <option>3–5 years</option>
+      <option>5+ years</option>
+    </select>
+  </div>
+
+  <!-- Current Situation -->
+  <div class="mb-3">
+    <label class="form-label">Current situation <small class="text-muted fw-normal">(select all that apply)</small></label>
+    <div class="d-flex flex-wrap gap-2">
+      {% for opt in ["Full-time job", "Part-time / Freelance", "Student", "Looking for first role", "Career switcher"] %}
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" name="current_situation" value="{{ opt }}" id="cs_{{ loop.index }}">
+        <label class="form-check-label" for="cs_{{ loop.index }}" style="font-size:.88rem;">{{ opt }}</label>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Time Availability -->
+  <div class="mb-3">
+    <label class="form-label">Hours per week available for learning &amp; projects</label>
+    <select class="form-select" name="time_hours_per_week" required>
+      <option value="" disabled selected>Select one…</option>
+      <option>&lt;5 hours</option>
+      <option>5–10 hours</option>
+      <option>10–15 hours</option>
+      <option>15–20 hours</option>
+      <option>20+ hours</option>
+    </select>
+  </div>
+
+  <!-- Schedule Constraints -->
+  <div class="mb-3">
+    <label class="form-label">Any schedule constraints? <small class="text-muted fw-normal">(optional)</small></label>
+    <textarea class="form-control" name="schedule_constraints" rows="2"
+              placeholder="E.g., evenings only after 8 pm, weekends free, must avoid exam weeks…"></textarea>
+  </div>
+
+  <!-- Future Tendency -->
+  <div class="mb-3">
+    <label class="form-label">Future work tendency <small class="text-muted fw-normal">(select up to 3)</small></label>
+    <div class="row g-2">
+      {% for opt in ["High salary & stability", "Creative / innovative projects", "Work-life balance & flexibility",
+                     "Remote-first lifestyle", "Team collaboration & leadership", "Solo deep technical work",
+                     "Entrepreneurship / building products", "Helping people / social impact"] %}
+      <div class="col-6">
+        <div class="form-check">
+          <input class="form-check-input tendency-check" type="checkbox" name="future_tendency"
+                 value="{{ opt }}" id="ft_{{ loop.index }}"
+                 onchange="limitChecks(this, 'tendency-check', 3)">
+          <label class="form-check-label" for="ft_{{ loop.index }}" style="font-size:.83rem;">{{ opt }}</label>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Long-term Vision -->
+  <div class="mb-4">
+    <label class="form-label">Long-term vision <small class="text-muted fw-normal">(optional)</small></label>
+    <textarea class="form-control" name="long_term_vision" rows="2"
+              placeholder="In 3–5 years, what does your ideal day look like?"></textarea>
+  </div>
+
+  <div class="d-flex gap-3">
+    <button type="button" class="btn btn-outline-secondary"
+            onclick="location.reload()">
+      <i class="bi bi-arrow-left me-1"></i>Back
+    </button>
+    <button type="submit" class="btn btn-primary flex-grow-1">
+      <i class="bi bi-arrow-right me-2"></i>Continue
+      <span class="htmx-indicator spinner-border spinner-border-sm ms-2"></span>
+    </button>
+  </div>
+</form>
+
+<script>
+function limitChecks(el, cls, max) {
+  const checked = document.querySelectorAll('.' + cls + ':checked');
+  if (checked.length > max) el.checked = false;
+}
+</script>
