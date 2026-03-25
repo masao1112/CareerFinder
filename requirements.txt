@@ -3,3 +3,6 @@ uvicorn[standard]
 sqlmodel
 jinja2
 python-multipart
+langchain
+langchain-openai
+python-dotenv

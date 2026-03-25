@@ -14,6 +14,7 @@ from models import (
     User, Assessment, MatchResult, Roadmap,
     Phase, Checkpoint, ProjectIdea, Resource,
 )
+from helpers import get_roadmap_data, get_model_response
 
 app = FastAPI(title="TechPath AI")
 templates = Jinja2Templates(directory="templates")
@@ -22,40 +23,6 @@ templates = Jinja2Templates(directory="templates")
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
-
-
-# ── Helpers ────────────────────────────────────────────────────────────────────
-
-def get_roadmap_data(roadmap_id: int, session: Session):
-    roadmap = session.get(Roadmap, roadmap_id)
-    if not roadmap:
-        return None, None, None, None
-
-    user = session.get(User, roadmap.user_id)
-    phases = session.exec(
-        select(Phase).where(Phase.roadmap_id == roadmap_id).order_by(Phase.order_index)
-    ).all()
-
-    phase_data = []
-    for phase in phases:
-        checkpoints = session.exec(
-            select(Checkpoint).where(Checkpoint.phase_id == phase.id)
-        ).all()
-        projects = session.exec(
-            select(ProjectIdea).where(ProjectIdea.phase_id == phase.id)
-        ).all()
-        resources = session.exec(
-            select(Resource).where(Resource.phase_id == phase.id)
-        ).all()
-        phase_data.append({
-            "phase": phase,
-            "checkpoints": checkpoints,
-            "projects": projects,
-            "resources": resources,
-        })
-
-    return roadmap, user, phase_data
-
 
 # ── Pages ──────────────────────────────────────────────────────────────────────
 
@@ -358,48 +325,13 @@ async def submit_assessment(
     session.commit()
     session.refresh(assessment_obj)
 
-    # Mock match result
-    recommended = "Artificial Intelligence (AI) Engineer" if is_undecided else selected_path
-    match = MatchResult(
-        assessment_id=assessment_obj.id,
-        top_matches=json.dumps([
-            {"path": recommended, "score": 91},
-            {"path": "Data Scientist", "score": 74},
-        ]),
-        recommended_path=recommended,
-    )
-    session.add(match)
-
-    # Create a basic mock roadmap
-    roadmap = Roadmap(
-        user_id=anon_user.id,
-        assessment_id=assessment_obj.id,
-        title=f"Your Personalized {recommended} Roadmap",
-        overall_progress=0.0,
-    )
-    session.add(roadmap)
-    session.commit()
-    session.refresh(roadmap)
-
-    # Seed 1 starter phase
-    phase = Phase(
-        roadmap_id=roadmap.id,
-        name="Phase 1: Foundations",
-        order_index=1,
-        description="Your personalised foundation phase. AI-powered detailed plan coming soon.",
-    )
-    session.add(phase)
-    session.commit()
-    session.refresh(phase)
-
-    checkpoint = Checkpoint(
-        phase_id=phase.id,
-        description="Complete your first learning milestone",
-    )
-    session.add(checkpoint)
-    session.commit()
-
-    return RedirectResponse(url=f"/roadmap/{roadmap.id}", status_code=303)
+    # Call the LLM to generate roadmap and process response
+    try:
+        roadmap_id = get_model_response(assessment_obj, session)
+        return RedirectResponse(url=f"/roadmap/{roadmap_id}", status_code=303)
+    except Exception as e:
+        print(f"Error generating roadmap: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate roadmap from AI model.")
 
 
 # ── Checkpoint Toggle ──────────────────────────────────────────────────────────
