@@ -1,7 +1,9 @@
 <!-- Step 3a: Undecided Discovery Path -->
 <!-- HTMX partial — swapped into #quiz-container -->
 <form action="/api/submit-assessment" method="post">
+  <input type="hidden" name="current_step" value="3">
   <input type="hidden" name="selected_path" value="{{ selected_path }}">
+
 
   <div class="alert border-0 mb-3 py-2 px-3" style="background:#fff8e1; border-left:4px solid var(--gold-dark) !important; border-radius:10px;">
     <i class="bi bi-stars me-2" style="color:var(--gold-dark);"></i>
