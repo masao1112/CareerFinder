@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Register - TechPath AI{% endblock %}
+
+{% block content %}
+<section class="py-5 bg-light" style="min-height: 80vh; display: flex; align-items: center;">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-6 col-lg-5">
+        <div class="card shadow border-0" style="border-radius: 16px; overflow: hidden;">
+          <div class="card-header bg-navy text-white text-center py-4">
+            <h3 class="mb-0 fw-800">Create Account</h3>
+            <p class="mb-0 text-gold small fw-600">Join the future of career pathfinding</p>
+          </div>
+          <div class="card-body p-4 p-md-5">
+            
+            {% if error %}
+            <div class="alert alert-danger border-0 small shadow-sm mb-4" style="border-radius: 8px;" role="alert">
+              {{ error }}
+            </div>
+            {% endif %}
+
+            <form action="/register" method="POST">
+              <div class="mb-3">
+                <label class="form-label text-navy small fw-700 text-uppercase ls-1">Full Name</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white border-end-0 text-muted shadow-none"><i class="bi bi-person"></i></span>
+                  <input type="text" name="name" class="form-control border-start-0 ps-0 shadow-none" placeholder="John Doe" required style="border-radius: 0 8px 8px 0;">
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label text-navy small fw-700 text-uppercase ls-1">Email Address</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white border-end-0 text-muted shadow-none"><i class="bi bi-envelope"></i></span>
+                  <input type="email" name="email" class="form-control border-start-0 ps-0 shadow-none" placeholder="name@example.com" required style="border-radius: 0 8px 8px 0;">
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label text-navy small fw-700 text-uppercase ls-1">Password</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white border-end-0 text-muted shadow-none"><i class="bi bi-lock-fill"></i></span>
+                  <input type="password" name="password" class="form-control border-start-0 ps-0 shadow-none" placeholder="••••••••" required style="border-radius: 0 8px 8px 0;">
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <label class="form-label text-navy small fw-700 text-uppercase ls-1">Confirm Password</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white border-end-0 text-muted shadow-none"><i class="bi bi-shield-lock-fill"></i></span>
+                  <input type="password" name="confirm_password" class="form-control border-start-0 ps-0 shadow-none" placeholder="••••••••" required style="border-radius: 0 8px 8px 0;">
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-teal w-100 py-2 fw-700 shadow-sm transition mb-3" style="border-radius: 8px;">
+                Sign Up <i class="bi bi-person-plus-fill ms-1"></i>
+              </button>
+            </form>
+
+            <div class="position-relative my-4 text-center">
+              <hr class="text-muted">
+              <span class="position-absolute top-50 start-50 translate-middle bg-white px-3 text-muted small text-uppercase fw-600">Or continue with</span>
+            </div>
+
+            <div class="d-grid">
+              <div id="g_id_onload"
+                   data-client_id="{{ GOOGLE_CLIENT_ID }}"
+                   data-context="signup"
+                   data-ux_mode="popup"
+                   data-login_uri="http://localhost:8000/auth/google"
+                   data-auto_prompt="false">
+              </div>
+              <div class="g_id_signin w-100" data-type="standard" data-shape="rectangular" data-theme="outline" data-text="signup_with" data-size="large" data-logo_alignment="left"></div>
+            </div>
+
+            <div class="text-center mt-4">
+              <p class="text-muted small mb-0">Already have an account? <a href="/login" class="text-navy fw-700 text-decoration-none">Log In</a></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

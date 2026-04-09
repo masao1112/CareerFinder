@@ -21,7 +21,7 @@ TechPath AI is a full-stack web application designed to help users discover thei
 ### 1. Install Dependencies
 Ensure you have Python 3.9+ installed. Clone or copy the project files, then run:
 ```bash
-pip install -r requirements.txt
+    pip install -r requirements.txt
 ```
 
 ### 2. Seed the Database

@@ -72,7 +72,7 @@ def get_roadmap_data(roadmap_id: int, session: Session):
 
 # Get model response
 def get_model_response(user_assessment: Assessment, session: Session):
-    llm = ChatOpenAI(model="gpt-4o", temperature=0.2)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
     structured_llm = llm.with_structured_output(RoadmapOutput)
     
     prompt_text = f"""

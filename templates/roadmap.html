@@ -223,8 +223,8 @@
   }
 
   .checkpoint-item.done span {
-    text-decoration: line-through;
-    color: var(--gray-soft);
+    color: var(--teal);
+    font-weight: 500;
   }
 
   /* ── Project Item ────────────────────────────────────────────────── */
@@ -330,12 +330,18 @@
           {% endif %}
           <h1 class="mb-1">{{ roadmap.title }}</h1>
           {% if user %}
-          <div class="d-flex align-items-center gap-2 mb-3">
-            <div class="rounded-circle d-flex align-items-center justify-content-center"
-              style="width:30px;height:30px;background:rgba(255,255,255,.2);">
-              <i class="bi bi-person-fill" style="font-size:.85rem;"></i>
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="d-flex align-items-center gap-2">
+              <div class="rounded-circle d-flex align-items-center justify-content-center"
+                style="width:30px;height:30px;background:rgba(255,255,255,.2);">
+                <i class="bi bi-person-fill" style="font-size:.85rem;"></i>
+              </div>
+              <span style="font-size:.88rem; opacity:.9; font-weight:600;">{{ user.name }}</span>
             </div>
-            <span style="font-size:.88rem; opacity:.8;">{{ user.name }}</span>
+            <div class="d-flex align-items-center gap-2" style="opacity:.7; font-size:.85rem;">
+              <i class="bi bi-calendar3"></i>
+              <span>Created on {{ roadmap.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+            </div>
           </div>
           {% endif %}
 
@@ -358,18 +364,19 @@
         </div>
 
         <div class="col-md-5">
-          <div class="progress-ring-wrap">
+          <div class="progress-ring-wrap" id="progress-ring-wrap" data-roadmap-id="{{ roadmap.id }}">
             <!-- SVG progress ring -->
             {% set pct = roadmap.overall_progress | round(1) %}
             {% set circ = 2 * 3.14159 * 38 %}
             {% set dash_offset = circ * (1 - pct / 100) %}
-            <svg width="90" height="90" viewBox="0 0 90 90" style="flex-shrink:0;">
+            <svg width="90" height="90" viewBox="0 0 90 90" style="flex-shrink:0;" id="progress-ring-svg">
               <circle cx="45" cy="45" r="38" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="7" />
               <circle cx="45" cy="45" r="38" fill="none"
+                id="progress-ring-circle"
                 stroke="{{ 'var(--teal)' if pct > 0 else 'rgba(255,255,255,.1)' }}" stroke-width="7"
                 stroke-dasharray="{{ circ | round(1) }}" stroke-dashoffset="{{ dash_offset | round(1) }}"
                 stroke-linecap="round" transform="rotate(-90 45 45)" />
-              <text x="45" y="48" text-anchor="middle" fill="white" font-size="15" font-weight="800">{{ pct }}%</text>
+              <text x="45" y="48" text-anchor="middle" fill="white" font-size="15" font-weight="800" id="progress-ring-text">{{ pct }}%</text>
             </svg>
             <div>
               <div class="fw-700 mb-1" style="font-size:1rem;">Overall Progress</div>
@@ -568,20 +575,64 @@
 
 </div><!-- /roadmap-page -->
 
-<!-- Floating AI Tutor FAB -->
-<a href="#" class="ai-tutor-fab text-decoration-none"
-  onclick="alert('AI Tutor coming soon! This will be a live chat powered by RAG + GPT.'); return false;">
-  <span class="fab-bubble">BETA</span>
-  <i class="bi bi-robot fs-5"></i>
-  <span>AI Tutor – Have a question?</span>
-</a>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  // Re-calculate progress ring after checkpoint toggles
-  document.body.addEventListener('htmx:afterRequest', function (evt) {
-    // Optionally could update the ring dynamically; for now, a page refresh syncs it.
-  });
+  (function () {
+    const CIRC = 2 * Math.PI * 38;
+
+    function updateRing(pct) {
+      const circle = document.getElementById('progress-ring-circle');
+      const text   = document.getElementById('progress-ring-text');
+      if (!circle || !text) return;
+
+      const offset = CIRC * (1 - pct / 100);
+      circle.setAttribute('stroke-dashoffset', offset.toFixed(1));
+      circle.setAttribute('stroke', pct > 0 ? 'var(--teal)' : 'rgba(255,255,255,.1)');
+      text.textContent = pct + '%';
+    }
+
+    function fetchAndUpdateProgress() {
+      const wrap = document.getElementById('progress-ring-wrap');
+      if (!wrap) return;
+      const roadmapId = wrap.dataset.roadmapId;
+      fetch('/api/roadmap/' + roadmapId + '/progress')
+        .then(r => r.json())
+        .then(data => {
+          const pct = Math.round(data.progress * 10) / 10;
+          updateRing(pct);
+        })
+        .catch(err => console.warn('Progress fetch failed:', err));
+    }
+
+    // htmx:afterRequest fires after the server response is fully processed.
+    // We detect checkpoint toggles by checking the request URL.
+    document.body.addEventListener('htmx:afterRequest', function (evt) {
+      var url = (evt.detail && evt.detail.pathInfo && evt.detail.pathInfo.requestPath) || '';
+      if (!url) {
+        // Fallback: check xhr path
+        try { url = evt.detail.xhr.responseURL || ''; } catch(e) {}
+      }
+      if (url.indexOf('/api/checkpoint/') !== -1 && url.indexOf('/toggle') !== -1) {
+        // Extract checkpoint id from URL  e.g. /api/checkpoint/5/toggle
+        var match = url.match(/\/api\/checkpoint\/(\d+)\/toggle/);
+        if (match) {
+          var cpId = match[1];
+          // The new button was swapped in with id="cp-btn-{id}"
+          var btn = document.getElementById('cp-btn-' + cpId);
+          if (btn) {
+            var row = btn.closest('.checkpoint-item');
+            if (row) {
+              var isDone = btn.classList.contains('btn-teal');
+              row.classList.toggle('done', isDone);
+            }
+          }
+        }
+        // Fetch fresh progress from server and animate ring
+        fetchAndUpdateProgress();
+      }
+    });
+  })();
 </script>
 {% endblock %}

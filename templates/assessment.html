@@ -107,10 +107,122 @@
   .step-dot.done {
     background: var(--teal-light);
   }
+
+  /* Full-screen Loading Overlay Wrapper */
+  #loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(13, 59, 102, 0.3);
+    backdrop-filter: blur(12px);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Professional Loader Card */
+  .loader-card {
+    background: #fff;
+    padding: 3.5rem 2.5rem;
+    border-radius: 28px;
+    box-shadow: 0 25px 60px rgba(13, 59, 102, 0.25);
+    width: 90%;
+    max-width: 480px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.8);
+    animation: fadeInUp 0.5s ease-out;
+  }
+
+  .loader-spinner-wrapper {
+    position: relative;
+    width: 90px;
+    height: 90px;
+    margin: 0 auto 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .loader-spinner {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border: 4px solid rgba(13, 59, 102, 0.1);
+    border-top: 4px solid var(--teal);
+    border-right: 4px solid var(--navy);
+    border-bottom: 4px solid var(--gold);
+    border-left: 4px solid transparent;
+    border-radius: 50%;
+    animation: spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  }
+
+  .loader-icon {
+    font-size: 2.2rem;
+    color: var(--navy);
+    animation: pulseIcon 2.4s ease-in-out infinite;
+  }
+
+  .loader-pulse {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--teal);
+    border-radius: 50%;
+    opacity: 0.15;
+    animation: pulse 2.4s ease-out infinite;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(1); opacity: 0.3; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
+
+  @keyframes pulseIcon {
+    0%, 100% { transform: scale(0.9); opacity: 0.8; }
+    50% { transform: scale(1.1); opacity: 1; }
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .loader-text {
+    font-family: 'Outfit', sans-serif;
+    color: var(--navy);
+    font-weight: 800;
+    font-size: 1.35rem;
+    margin-bottom: 0.6rem;
+    letter-spacing: -0.3px;
+  }
 </style>
+
 {% endblock %}
 
+
 {% block content %}
+<div id="loading-overlay">
+  <div class="loader-card">
+    <div class="loader-spinner-wrapper">
+      <div class="loader-pulse"></div>
+      <div class="loader-spinner"></div>
+      <i class="bi bi-robot loader-icon"></i>
+    </div>
+    <div class="loader-text">AI is building your roadmap...</div>
+    <p class="text-muted small px-2 mb-0">The system is analyzing your profile. Please wait a moment.</p>
+  </div>
+</div>
+
 <div class="quiz-wrapper">
   <div class="container">
     <div class="row justify-content-center">
@@ -220,6 +332,13 @@
       if (i < currentStep - 1) d.classList.add('done');
       else if (i === currentStep - 1) d.classList.add('active');
     });
+  }
+
+  function showLoading() {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) {
+      overlay.style.display = 'flex';
+    }
   }
 
   updateStep();

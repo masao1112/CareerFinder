@@ -6,3 +6,8 @@ python-multipart
 langchain
 langchain-openai
 python-dotenv
+google-auth
+requests
+passlib[bcrypt]
+bcrypt==4.0.1
+itsdangerous

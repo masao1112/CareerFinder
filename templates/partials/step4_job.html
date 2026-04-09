@@ -1,6 +1,6 @@
 <!-- Step 4: Job-Specific Technical Skills -->
 <!-- HTMX partial — swapped into #quiz-container -->
-<form action="/api/submit-assessment" method="post">
+<form action="/api/submit-assessment" method="post" onsubmit="showLoading()">
   <input type="hidden" name="current_step" value="3">
   <input type="hidden" name="selected_path" value="{{ selected_path }}">
 
@@ -68,6 +68,6 @@
     <i class="bi bi-cpu-fill me-2"></i>Build My Roadmap
   </button>
   <p class="text-center text-muted mt-2 mb-0" style="font-size:.78rem;">
-    <i class="bi bi-clock me-1"></i>Usually takes 2–3 seconds
+    <i class="bi bi-clock me-1"></i>Hệ thống sẽ chuyển trang sau khi AI xử lý xong.
   </p>
 </form>

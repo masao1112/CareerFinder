@@ -210,6 +210,229 @@
     .fade-up-d4 { animation-delay: .32s; }
   </style>
 
+  <style>
+    /* ── AI Tutor FAB ──────────────────────────────────────────────── */
+    .ai-fab-wrap {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: .75rem;
+    }
+
+    /* The pill button */
+    .ai-fab-btn {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      background: linear-gradient(135deg, var(--navy), var(--navy-light));
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      /* collapsed: only icon visible */
+      width: 48px;
+      height: 48px;
+      padding: 0 14px;
+      overflow: hidden;
+      cursor: pointer;
+      box-shadow: 0 6px 24px rgba(13,59,102,.38);
+      transition: width .35s cubic-bezier(.4,0,.2,1),
+                  padding .35s cubic-bezier(.4,0,.2,1),
+                  box-shadow .2s ease,
+                  transform .2s ease;
+      white-space: nowrap;
+      font-family: inherit;
+    }
+    .ai-fab-btn:hover, .ai-fab-btn:focus-visible {
+      width: 245px;
+      padding: 0 18px;
+      box-shadow: 0 10px 32px rgba(13,59,102,.48);
+      transform: translateY(-2px);
+      outline: none;
+    }
+    .ai-fab-btn .fab-icon {
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+    .ai-fab-btn .fab-label {
+      font-weight: 700;
+      font-size: .88rem;
+      opacity: 0;
+      transform: translateX(6px);
+      transition: opacity .25s .08s ease, transform .25s .08s ease;
+      pointer-events: none;
+    }
+    .ai-fab-btn:hover .fab-label,
+    .ai-fab-btn:focus-visible .fab-label {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    .ai-fab-btn-wrap {
+      position: relative;
+      display: inline-flex;
+    }
+    .ai-fab-btn-wrap .fab-badge {
+      position: absolute;
+      top: -6px;
+      right: -4px;
+      background: var(--gold);
+      color: var(--navy-dark);
+      font-size: .6rem;
+      font-weight: 800;
+      border-radius: 8px;
+      padding: 2px 6px;
+      border: 2px solid #fff;
+      line-height: 1;
+      z-index: 1;
+      pointer-events: none;
+      transition: opacity .2s;
+    }
+    /* hide badge when button is expanded so it doesn't overlap */
+    .ai-fab-btn-wrap:hover .fab-badge,
+    .ai-fab-btn:focus-visible ~ .fab-badge { opacity: 0; }
+
+    /* Chat panel */
+    .ai-chat-panel {
+      width: 360px;
+      max-width: calc(100vw - 2rem);
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 16px 48px rgba(13,59,102,.22);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      /* hidden by default */
+      max-height: 0;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(12px) scale(.97);
+      transition: max-height .4s cubic-bezier(.4,0,.2,1),
+                  opacity .3s ease,
+                  transform .3s ease;
+    }
+    .ai-chat-panel.open {
+      max-height: 500px;
+      opacity: 1;
+      pointer-events: all;
+      transform: translateY(0) scale(1);
+    }
+    .ai-chat-head {
+      background: linear-gradient(135deg, var(--navy), var(--navy-light));
+      color: #fff;
+      padding: .85rem 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: .7rem;
+    }
+    .ai-chat-head .ch-title {
+      flex: 1;
+      font-weight: 700;
+      font-size: .95rem;
+    }
+    .ai-chat-head .ch-badge {
+      background: var(--gold);
+      color: var(--navy-dark);
+      font-size: .62rem;
+      font-weight: 800;
+      border-radius: 8px;
+      padding: 2px 7px;
+    }
+    .ai-chat-head .ch-close {
+      background: rgba(255,255,255,.15);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: .85rem;
+      transition: background .2s;
+    }
+    .ai-chat-head .ch-close:hover { background: rgba(255,255,255,.28); }
+    .ai-chat-body {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      min-height: 220px;
+      max-height: 300px;
+      display: flex;
+      flex-direction: column;
+      gap: .6rem;
+      background: #f8f9fb;
+    }
+    /* Bot bubble */
+    .chat-bubble-bot {
+      align-self: flex-start;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 0 14px 14px 14px;
+      padding: .55rem .85rem;
+      font-size: .84rem;
+      line-height: 1.55;
+      color: var(--text);
+      max-width: 88%;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .chat-bubble-user {
+      align-self: flex-end;
+      background: var(--navy);
+      color: #fff;
+      border-radius: 14px 0 14px 14px;
+      padding: .55rem .85rem;
+      font-size: .84rem;
+      line-height: 1.55;
+      max-width: 88%;
+    }
+    .ai-chat-foot {
+      padding: .7rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: .5rem;
+      background: #fff;
+    }
+    .ai-chat-foot input {
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: .5rem .8rem;
+      font-size: .84rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .ai-chat-foot input:focus { border-color: var(--navy); }
+    .ai-chat-foot button {
+      background: var(--navy);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      width: 38px; height: 38px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background .2s;
+      flex-shrink: 0;
+    }
+    .ai-chat-foot button:hover { background: var(--navy-light); }
+    /* Typing indicator */
+    .typing-dot {
+      display: inline-block;
+      width: 6px; height: 6px;
+      background: var(--gray-soft);
+      border-radius: 50%;
+      animation: blink 1.2s infinite;
+    }
+    .typing-dot:nth-child(2) { animation-delay: .2s; }
+    .typing-dot:nth-child(3) { animation-delay: .4s; }
+    @keyframes blink {
+      0%, 80%, 100% { opacity: .2; transform: scale(.9); }
+      40%           { opacity: 1;  transform: scale(1.1); }
+    }
+  </style>
+
   {% block extra_head %}{% endblock %}
 </head>
 <body class="d-flex flex-column min-vh-100">
@@ -230,12 +453,34 @@
           <li class="nav-item"><a class="nav-link" href="/assessment"><i class="bi bi-clipboard-check me-1"></i>Assessment</a></li>
           <li class="nav-item"><a class="nav-link" href="/roadmap/1"><i class="bi bi-map me-1"></i>Demo Roadmap</a></li>
         </ul>
-        <a href="/assessment" class="btn btn-outline-light btn-sm px-3">
-          <i class="bi bi-arrow-right-circle me-1"></i>Start Free
-        </a>
+        {% if request.cookies.get('session_token') %}
+          <span class="text-white me-3 fw-medium">Hi, {{ unquote(request.cookies.get('session_user_name', '')) }}</span>
+          <a href="/settings" class="btn btn-outline-light btn-sm px-3 me-2"> 
+            <i class="bi bi-gear-fill me-1"></i>Settings
+          </a>
+          <a href="/logout" class="btn btn-outline-light btn-sm px-3">
+            <i class="bi bi-box-arrow-right me-1"></i>Logout
+          </a>
+        {% else %}
+          <a href="/login" class="btn btn-outline-light btn-sm px-3">
+            <i class="bi bi-arrow-right-circle me-1"></i>Login / Start Free
+          </a>
+        {% endif %}
       </div>
     </div>
   </nav>
+
+  {% if user and not user.password_hash %}
+  <div class="alert alert-warning border-0 rounded-0 mb-0 py-2 shadow-sm" style="background-color: #fff9db; color: #856404; font-size: 0.9rem;">
+    <div class="container d-flex align-items-center justify-content-between">
+      <span>
+        <i class="bi bi-shield-lock-fill me-2"></i>
+        Tài khoản của bạn chưa có mật khẩu bảo vệ. Hãy <a href="/settings#security" class="fw-700 text-decoration-none" style="color: #664d03;">thiết lập mật khẩu</a> để tăng cường bảo mật.
+      </span>
+      <button type="button" class="btn-close small" data-bs-dismiss="alert" aria-label="Close" style="font-size: 0.7rem;"></button>
+    </div>
+  </div>
+  {% endif %}
 
   <!-- Main content -->
   <main class="flex-grow-1">
@@ -250,10 +495,115 @@
     </div>
   </footer>
 
+  <!-- AI Tutor FAB + Chat Panel (global, all pages) -->
+  <div class="ai-fab-wrap" id="ai-fab-wrap">
+    <!-- Chat panel (above button) -->
+    <div class="ai-chat-panel" id="ai-chat-panel" role="dialog" aria-label="AI Tutor chat">
+      <div class="ai-chat-head">
+        <i class="bi bi-robot fs-5"></i>
+        <span class="ch-title">AI Tutor</span>
+        <span class="ch-badge">BETA</span>
+        <button class="ch-close" id="ai-chat-close" aria-label="Close chat"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="ai-chat-body" id="ai-chat-body">
+        <div class="chat-bubble-bot">
+          👋 Hi there! I'm <strong>AI Tutor</strong> by TechPath.<br>
+          Got any questions about your IT career roadmap?
+        </div>
+      </div>
+      <div class="ai-chat-foot">
+        <input type="text" id="ai-chat-input" placeholder="Ask me anything..." autocomplete="off" />
+        <button id="ai-chat-send" aria-label="Send"><i class="bi bi-send-fill"></i></button>
+      </div>
+    </div>
+
+    <!-- FAB pill button -->
+    <div class="ai-fab-btn-wrap">
+      <span class="fab-badge">BETA</span>
+      <button class="ai-fab-btn" id="ai-fab-btn" aria-label="Open AI Tutor">
+        <i class="bi bi-robot fab-icon"></i>
+        <span class="fab-label">AI Tutor – Have a question?</span>
+      </button>
+    </div>
+  </div>
+
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <!-- HTMX -->
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <!-- Google Sign-In -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   {% block extra_js %}{% endblock %}
+
+  <script>
+  (function () {
+    var btn   = document.getElementById('ai-fab-btn');
+    var panel = document.getElementById('ai-chat-panel');
+    var close = document.getElementById('ai-chat-close');
+    var input = document.getElementById('ai-chat-input');
+    var send  = document.getElementById('ai-chat-send');
+    var body  = document.getElementById('ai-chat-body');
+
+    function openChat() {
+      panel.classList.add('open');
+      btn.setAttribute('aria-expanded', 'true');
+      setTimeout(function () { input && input.focus(); }, 350);
+    }
+    function closeChat() {
+      panel.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+
+    btn.addEventListener('click', function () {
+      panel.classList.contains('open') ? closeChat() : openChat();
+    });
+    close.addEventListener('click', closeChat);
+
+    // Close when clicking outside
+    document.addEventListener('click', function (e) {
+      var wrap = document.getElementById('ai-fab-wrap');
+      if (wrap && !wrap.contains(e.target)) closeChat();
+    });
+
+    // Send message (placeholder — real AI hook goes here later)
+    function appendBubble(text, who) {
+      var div = document.createElement('div');
+      div.className = who === 'user' ? 'chat-bubble-user' : 'chat-bubble-bot';
+      div.textContent = text;
+      body.appendChild(div);
+      body.scrollTop = body.scrollHeight;
+    }
+    function showTyping() {
+      var div = document.createElement('div');
+      div.className = 'chat-bubble-bot';
+      div.id = 'typing-indicator';
+      div.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
+      body.appendChild(div);
+      body.scrollTop = body.scrollHeight;
+    }
+    function removeTyping() {
+      var t = document.getElementById('typing-indicator');
+      if (t) t.remove();
+    }
+
+    function handleSend() {
+      var text = input.value.trim();
+      if (!text) return;
+      appendBubble(text, 'user');
+      input.value = '';
+      showTyping();
+      // TODO: replace with real API call
+      setTimeout(function () {
+        removeTyping();
+        appendBubble('AI chat is coming soon! Please check back later. 🚀', 'bot');
+      }, 1200);
+    }
+
+    send.addEventListener('click', handleSend);
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') handleSend();
+    });
+  })();
+  </script>
 </body>
 </html>

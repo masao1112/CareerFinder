@@ -4,6 +4,7 @@ Usage: python seed.py
 """
 import json
 import sys
+from passlib.context import CryptContext
 from database import create_db_and_tables, engine
 from models import (
     User, Assessment, MatchResult, Roadmap,
@@ -15,9 +16,12 @@ from sqlmodel import Session
 def seed():
     create_db_and_tables()
 
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    hashed_pwd = pwd_context.hash("password123")
+
     with Session(engine) as session:
         # ── User 1: Alice – Software Engineer ──────────────────────────────
-        alice = User(name="Alice Johnson", email="alice@example.com")
+        alice = User(name="Alice Johnson", email="alice@example.com", password_hash=hashed_pwd)
         session.add(alice)
         session.commit()
         session.refresh(alice)
@@ -149,7 +153,7 @@ def seed():
         session.commit()
 
         # ── User 2: Bob – Data Scientist ────────────────────────────────────
-        bob = User(name="Bob Martinez", email="bob@example.com")
+        bob = User(name="Bob Martinez", email="bob@example.com", password_hash=hashed_pwd)
         session.add(bob)
         session.commit()
         session.refresh(bob)
@@ -244,7 +248,7 @@ def seed():
         session.commit()
 
         # ── User 3: Carol – Undecided → AI Engineer ──────────────────────────
-        carol = User(name="Carol Chen", email="carol@example.com")
+        carol = User(name="Carol Chen", email="carol@example.com", password_hash=hashed_pwd)
         session.add(carol)
         session.commit()
         session.refresh(carol)

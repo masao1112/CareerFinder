@@ -3,6 +3,15 @@ main.py – TechPath AI FastAPI application
 """
 import json
 import uuid
+import hashlib
+from passlib.context import CryptContext
+import smtplib
+import ssl
+import random
+import string
+from datetime import datetime, timedelta
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from typing import Optional, List
 from fastapi import FastAPI, Request, Form, Depends, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -13,28 +22,409 @@ from database import create_db_and_tables, get_session
 from models import (
     User, Assessment, MatchResult, Roadmap,
     Phase, Checkpoint, ProjectIdea, Resource,
+    PasswordResetToken, get_vietnam_time
 )
 from helpers import get_roadmap_data, get_model_response
 
+import urllib.parse
+
+# Cấu hình băm mật khẩu
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Cấu hình Google
+GOOGLE_CLIENT_ID = "551158881077-om6jbecbdlhh4eg0179je47k3jbf3s8i.apps.googleusercontent.com"
+
 app = FastAPI(title="TechPath AI")
 templates = Jinja2Templates(directory="templates")
+templates.env.globals['unquote'] = urllib.parse.unquote
+templates.env.globals['GOOGLE_CLIENT_ID'] = GOOGLE_CLIENT_ID
 
 
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
+    
+    # Auto-migration for SQLite (ép buộc thêm cột nếu thiếu)
+    import sqlite3
+    try:
+        conn = sqlite3.connect("techpath.db")
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(user)")
+        columns = [row[1] for row in cursor.fetchall()]
+        
+        if "password_hash" not in columns:
+            cursor.execute("ALTER TABLE user ADD COLUMN password_hash VARCHAR")
+            print("Migration: Added password_hash column to user table")
+            
+        if "created_at" not in columns:
+            cursor.execute("ALTER TABLE user ADD COLUMN created_at DATETIME")
+            print("Migration: Added created_at column to user table")
+            
+        # New Career Fields
+        if "current_status" not in columns:
+            cursor.execute("ALTER TABLE user ADD COLUMN current_status VARCHAR")
+        if "primary_skills" not in columns:
+            cursor.execute("ALTER TABLE user ADD COLUMN primary_skills VARCHAR")
+        if "career_goal" not in columns:
+            cursor.execute("ALTER TABLE user ADD COLUMN career_goal VARCHAR")
+        if "hours_per_week" not in columns:
+            cursor.execute("ALTER TABLE user ADD COLUMN hours_per_week INTEGER")
+            
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Migration error: {e}")
 
 # ── Pages ──────────────────────────────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+async def index(request: Request, session: Session = Depends(get_session)):
+    user_id = request.cookies.get("session_token")
+    user = None
+    if user_id:
+        try:
+            user = session.exec(select(User).where(User.id == int(user_id))).first()
+        except:
+            pass
+    return templates.TemplateResponse(request, "index.html", {"user": user})
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse(request, "login.html")
+
+@app.post("/login", response_class=HTMLResponse)
+async def login_post(
+    request: Request,
+    email: str = Form(...),
+    password: str = Form(...),
+    session: Session = Depends(get_session)
+):
+    email = email.strip().lower()
+    user = session.exec(select(User).where(User.email == email)).first()
+    if not user:
+        return templates.TemplateResponse(request, "login.html", {"error": "Invalid email or password"})
+    
+    if not user.password_hash or not pwd_context.verify(password, user.password_hash):
+        return templates.TemplateResponse(request, "login.html", {"error": "Invalid email or password"})
+    
+    response = RedirectResponse(url="/", status_code=303)
+    response.set_cookie("session_token", str(user.id))
+    response.set_cookie("session_user_name", urllib.parse.quote(user.name))
+    return response
+
+@app.get("/register", response_class=HTMLResponse)
+async def register_page(request: Request):
+    return templates.TemplateResponse(request, "register.html")
+
+@app.post("/register", response_class=HTMLResponse)
+async def register_post(
+    request: Request,
+    name: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    confirm_password: str = Form(...),
+    session: Session = Depends(get_session)
+):
+    if password != confirm_password:
+        return templates.TemplateResponse(request, "register.html", {"error": "Passwords do not match"})
+        
+    email = email.strip().lower()
+    existing = session.exec(select(User).where(User.email == email)).first()
+    if existing:
+        return templates.TemplateResponse(request, "register.html", {"error": "Email already registered"})
+    
+    hashed = pwd_context.hash(password)
+    user = User(name=name, email=email, password_hash=hashed)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    
+    response = RedirectResponse(url="/", status_code=303)
+    response.set_cookie("session_token", str(user.id))
+    response.set_cookie("session_user_name", urllib.parse.quote(user.name))
+    return response
+
+@app.get("/logout")
+async def logout():
+    response = RedirectResponse(url="/", status_code=303)
+    response.delete_cookie("session_token")
+    response.delete_cookie("session_user_name")
+    return response
+
+@app.post("/auth/google")
+async def google_auth(
+    request: Request,
+    credential: str = Form(...),
+    session: Session = Depends(get_session)
+):
+    try:
+        from google.oauth2 import id_token
+        from google.auth.transport import requests as google_requests
+        
+        # Verify without strict audience here, or user must replace it. 
+        # But we'll use a placeholder and catch Audience missing errors, but let's just 
+        # instruct the user to update `YOUR_GOOGLE_CLIENT_ID`
+        idinfo = id_token.verify_oauth2_token(
+            credential, 
+            google_requests.Request(), 
+            GOOGLE_CLIENT_ID,
+            clock_skew_in_seconds=10
+        )
+        
+        email = idinfo['email'].strip().lower()
+        name = idinfo.get('name', 'Google User')
+        
+        user = session.exec(select(User).where(User.email == email)).first()
+        if not user:
+            user = User(name=name, email=email)
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+            
+        response = RedirectResponse(url="/", status_code=303)
+        response.set_cookie("session_token", str(user.id))
+        response.set_cookie("session_user_name", urllib.parse.quote(user.name))
+        return response
+    except ValueError as e:
+        print(f"Google Token Verification Error: {e}")
+        return templates.TemplateResponse(request, "login.html", {"error": f"Google Sign-In failed: Invalid token or Client ID mismatch. Details: {str(e)}"})
+    except Exception as e:
+        return templates.TemplateResponse(request, "login.html", {"error": f"Google Sign-In failed: {str(e)}"})
+
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(
+    request: Request,
+    session: Session = Depends(get_session)
+):
+    user_id = request.cookies.get("session_token")
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    user = session.exec(select(User).where(User.id == int(user_id))).first()
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    # Lấy lịch sử Roadmap
+    roadmaps = session.exec(select(Roadmap).where(Roadmap.user_id == user.id).order_by(Roadmap.created_at.desc())).all()
+    
+    return templates.TemplateResponse(request, "settings.html", {"user": user, "roadmaps": roadmaps})
+
+@app.post("/settings/profile", response_class=HTMLResponse)
+async def settings_profile_post(
+    request: Request,
+    name: str = Form(...),
+    current_status: Optional[str] = Form(None),
+    primary_skills: Optional[str] = Form(None),
+    career_goal: Optional[str] = Form(None),
+    hours_per_week: Optional[int] = Form(None),
+    session: Session = Depends(get_session)
+):
+    user_id = request.cookies.get("session_token")
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    user = session.exec(select(User).where(User.id == int(user_id))).first()
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    user.name = name
+    user.current_status = current_status
+    user.primary_skills = primary_skills
+    user.career_goal = career_goal
+    user.hours_per_week = hours_per_week
+    
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    
+    roadmaps = session.exec(select(Roadmap).where(Roadmap.user_id == user.id).all())
+    return templates.TemplateResponse(request, "settings.html", {
+        "user": user, 
+        "roadmaps": roadmaps,
+        "profile_success": "Đã cập nhật hồ sơ thành công!"
+    })
+
+@app.post("/settings/password", response_class=HTMLResponse)
+async def settings_password_post(
+    request: Request,
+    current_password: Optional[str] = Form(None),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+    session: Session = Depends(get_session)
+):
+    user_id = request.cookies.get("session_token")
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    user = session.exec(select(User).where(User.id == int(user_id))).first()
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    # Validation
+    if new_password != confirm_password:
+        return templates.TemplateResponse(request, "settings.html", {"user": user, "error": "Mật khẩu mới không khớp"})
+    
+    # If user already has a password, verify it
+    if user.password_hash:
+        if not current_password or not pwd_context.verify(current_password, user.password_hash):
+            return templates.TemplateResponse(request, "settings.html", {"user": user, "error": "Mật khẩu hiện tại không đúng"})
+    
+    # Update password
+    user.password_hash = pwd_context.hash(new_password)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    
+    return templates.TemplateResponse(request, "settings.html", {"user": user, "success": "Đã cập nhật mật khẩu thành công!"})
+
+
+
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 465
+SENDER_EMAIL = "tanhlucky102@gmail.com" 
+SENDER_PASSWORD = "fhbc wbub bxhu rlfr" 
+
+def send_otp_email(to_email: str, otp_code: str):
+    message = MIMEMultipart("alternative")
+    message["Subject"] = "Mã xác thực TechPath AI - Quên mật khẩu"
+    message["From"] = SENDER_EMAIL
+    message["To"] = to_email
+
+    text = f"Mã OTP của bạn là: {otp_code}. Mã này có hiệu lực trong 5 phút."
+    html = f"""
+    <html>
+    <body>
+        <h2 style='color: #4f46e5;'>TechPath AI</h2>
+        <p>Chào bạn,</p>
+        <p>Bạn đã yêu cầu đặt lại mật khẩu. Vui lòng sử dụng mã OTP dưới đây:</p>
+        <div style='background-color: #f3f4f6; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px;'>
+            {otp_code}
+        </div>
+        <p>Mã này sẽ hết hạn sau 5 phút.</p>
+        <p>Nếu bạn không yêu cầu điều này, hãy bỏ qua email này.</p>
+    </body>
+    </html>
+    """
+    message.attach(MIMEText(text, "plain"))
+    message.attach(MIMEText(html, "html"))
+
+    context = ssl.create_default_context()
+    try:
+        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, context=context) as server:
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            server.sendmail(SENDER_EMAIL, to_email, message.as_string())
+        return True
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        return False
+
+@app.get("/forgot-password", response_class=HTMLResponse)
+async def forgot_password_page(request: Request):
+    return templates.TemplateResponse(request, "forgot_password.html")
+
+@app.post("/forgot-password", response_class=HTMLResponse)
+async def forgot_password_post(
+    request: Request,
+    email: str = Form(...),
+    session: Session = Depends(get_session)
+):
+    email = email.strip().lower()
+    user = session.exec(select(User).where(User.email == email)).first()
+    
+    if not user:
+        return templates.TemplateResponse(request, "forgot_password.html", {"error": "Email không tồn tại trong hệ thống"})
+    
+    # Tạo mã OTP 6 số
+    otp = ''.join(random.choices(string.digits, k=6))
+    expires = get_vietnam_time() + timedelta(minutes=5)
+    
+    # Lưu vào database
+    reset_token = PasswordResetToken(user_id=user.id, otp_code=otp, expires_at=expires)
+    session.add(reset_token)
+    session.commit()
+    
+    # Gửi mail
+    if send_otp_email(email, otp):
+        response = RedirectResponse(url=f"/verify-otp?email={email}", status_code=303)
+        return response
+    else:
+        return templates.TemplateResponse(request, "forgot_password.html", {"error": "Gửi email thất bại, vui lòng thử lại sau. (Vui lòng kiểm tra lại cấu hình SENDER_EMAIL)"})
+
+@app.get("/verify-otp", response_class=HTMLResponse)
+async def verify_otp_page(request: Request, email: str):
+    return templates.TemplateResponse(request, "verify_otp.html", {"email": email})
+
+@app.post("/verify-otp", response_class=HTMLResponse)
+async def verify_otp_post(
+    request: Request,
+    email: str = Form(...),
+    otp: str = Form(...),
+    session: Session = Depends(get_session)
+):
+    user = session.exec(select(User).where(User.email == email)).first()
+    if not user:
+        return templates.TemplateResponse(request, "verify_otp.html", {"email": email, "error": "Đã có lỗi xảy ra"})
+        
+    # Lấy mã OTP mới nhất của user này
+    db_token = session.exec(
+        select(PasswordResetToken)
+        .where(PasswordResetToken.user_id == user.id)
+        .order_by(PasswordResetToken.created_at.desc())
+    ).first()
+    
+    if not db_token or db_token.otp_code != otp:
+        return templates.TemplateResponse(request, "verify_otp.html", {"email": email, "error": "Mã OTP không chính xác"})
+    
+    if get_vietnam_time() > db_token.expires_at:
+        return templates.TemplateResponse(request, "verify_otp.html", {"email": email, "error": "Mã OTP đã hết hạn"})
+    
+    # OK, chuyển sang trang đổi mật khẩu (truyền otp kèm để bảo mật nhẹ)
+    return RedirectResponse(url=f"/reset-password?email={email}&token={otp}", status_code=303)
+
+@app.get("/reset-password", response_class=HTMLResponse)
+async def reset_password_page(request: Request, email: str, token: str):
+    return templates.TemplateResponse(request, "reset_password.html", {"email": email, "token": token})
+
+@app.post("/reset-password", response_class=HTMLResponse)
+async def reset_password_post(
+    request: Request,
+    email: str = Form(...),
+    token: str = Form(...),
+    password: str = Form(...),
+    confirm_password: str = Form(...),
+    session: Session = Depends(get_session)
+):
+    if password != confirm_password:
+        return templates.TemplateResponse(request, "reset_password.html", {"email": email, "token": token, "error": "Mật khẩu không khớp"})
+        
+    user = session.exec(select(User).where(User.email == email)).first()
+    if not user:
+        return templates.TemplateResponse(request, "login.html", {"error": "Lỗi hệ thống"})
+        
+    db_token = session.exec(
+        select(PasswordResetToken)
+        .where(PasswordResetToken.user_id == user.id, PasswordResetToken.otp_code == token)
+    ).first()
+    
+    if not db_token:
+        return templates.TemplateResponse(request, "login.html", {"error": "Yêu cầu không hợp lệ"})
+        
+    # Cập nhật mật khẩu
+    user.password_hash = pwd_context.hash(password)
+    session.add(user)
+    
+    # Xoá token đã dùng
+    session.delete(db_token)
+    session.commit()
+    
+    return templates.TemplateResponse(request, "login.html", {"message": "Đổi mật khẩu thành công! Vui lòng đăng nhập."})
 
 
 @app.get("/assessment", response_class=HTMLResponse)
 async def assessment(request: Request):
-    return templates.TemplateResponse("assessment.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "assessment.html", {
         "step": 1,
     })
 
@@ -58,16 +448,30 @@ async def roadmap_page(
             select(MatchResult).where(MatchResult.assessment_id == assessment_obj.id)
         ).first()
         if match_result:
-            top_matches = json.loads(match_result.top_matches)
+            top_matches = sorted(
+                json.loads(match_result.top_matches),
+                key=lambda x: x["score"],
+                reverse=True,
+            )
 
-    return templates.TemplateResponse("roadmap.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "roadmap.html", {
         "roadmap": roadmap,
         "user": user,
         "phase_data": phase_data,
         "top_matches": top_matches,
         "match_result": match_result,
     })
+
+
+@app.get("/api/roadmap/{roadmap_id}/progress")
+async def get_roadmap_progress(
+    roadmap_id: int,
+    session: Session = Depends(get_session),
+):
+    roadmap = session.get(Roadmap, roadmap_id)
+    if not roadmap:
+        raise HTTPException(status_code=404, detail="Roadmap not found")
+    return {"progress": roadmap.overall_progress}
 
 
 # ── HTMX Quiz Step Endpoints ───────────────────────────────────────────────────
@@ -220,8 +624,7 @@ async def assessment_step(request: Request):
     if step == 1:
         # Received Part 1 selection → serve Part 2
         selected_path = form.get("selected_path", "")
-        return templates.TemplateResponse("partials/step2.html", {
-            "request": request,
+        return templates.TemplateResponse(request, "partials/step2.html", {
             "selected_path": selected_path,
         })
 
@@ -230,16 +633,14 @@ async def assessment_step(request: Request):
         selected_path = form.get("selected_path", "")
         is_undecided = selected_path == "Not yet known – I want TechPath AI to recommend the best fit for me"
         if is_undecided:
-            return templates.TemplateResponse("partials/step3_undecided.html", {
-                "request": request,
+            return templates.TemplateResponse(request, "partials/step3_undecided.html", {
                 "selected_path": selected_path,
                 "interest_areas": INTEREST_AREAS,
                 "broad_skills": BROAD_SKILLS,
             })
         else:
             skills = JOB_SKILLS.get(selected_path, [])
-            return templates.TemplateResponse("partials/step4_job.html", {
-                "request": request,
+            return templates.TemplateResponse(request, "partials/step4_job.html", {
                 "selected_path": selected_path,
                 "skills": skills,
             })
@@ -309,14 +710,40 @@ async def submit_assessment(
             }
         }
 
-    # Create anonymous user if not logged in
-    anon_user = User(name="Anonymous", email=f"anon_{uuid.uuid4().hex[:8]}@techpath.ai")
-    session.add(anon_user)
-    session.commit()
-    session.refresh(anon_user)
+    # ── Logic Gắn ID Người Dùng ──
+    user_id_from_cookie = request.cookies.get("session_token")
+    target_user = None
+    
+    if user_id_from_cookie:
+        target_user = session.get(User, int(user_id_from_cookie))
+        
+    if target_user:
+        # Cập nhật thông tin profile từ assessment nếu profile còn trống
+        if not target_user.current_status:
+            target_user.current_status = general_profile.get("education", "")
+        if not target_user.career_goal:
+            target_user.career_goal = selected_path
+        if not target_user.hours_per_week:
+            try:
+                # Trích xuất số từ chuỗi ví dụ: "10-15 hours" -> 10
+                hours_str = general_profile.get("time_hours_per_week", "")
+                if hours_str:
+                    import re
+                    match = re.search(r'\d+', hours_str)
+                    if match:
+                        target_user.hours_per_week = int(match.group())
+            except:
+                pass
+        session.add(target_user)
+    else:
+        # Chỉ tạo User Anonymous nếu chưa đăng nhập
+        target_user = User(name="Anonymous", email=f"anon_{uuid.uuid4().hex[:8]}@techpath.ai")
+        session.add(target_user)
+        session.commit()
+        session.refresh(target_user)
 
     assessment_obj = Assessment(
-        user_id=anon_user.id,
+        user_id=target_user.id,
         session_id=str(uuid.uuid4()),
         selected_path=selected_path,
         raw_survey=json.dumps(survey),
@@ -372,7 +799,6 @@ async def toggle_checkpoint(
     session.refresh(checkpoint)
 
     # Return updated checkpoint button fragment
-    return templates.TemplateResponse("partials/checkpoint_btn.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "partials/checkpoint_btn.html", {
         "checkpoint": checkpoint,
     })

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Verify OTP - TechPath AI{% endblock %}
+
+{% block content %}
+<section class="py-5 bg-light" style="min-height: 80vh; display: flex; align-items: center;">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-5">
+        <div class="card shadow border-0" style="border-radius: 16px; overflow: hidden;">
+          <div class="card-header bg-navy text-white text-center py-4">
+            <h3 class="mb-0 fw-800"><i class="bi bi-shield-check me-2 text-gold"></i>Security Verification</h3>
+          </div>
+          <div class="card-body p-4 p-md-5 text-center">
+            <p class="text-muted small mb-4">We've sent a 6-digit confirmation code to <br><strong class="text-navy">{{ email }}</strong>.</p>
+
+            {% if error %}
+            <div class="alert alert-danger border-0 small shadow-sm mb-4" style="border-radius: 8px; background-color: #fff5f5; color: #e53e3e;" role="alert">
+              {{ error }}
+            </div>
+            {% endif %}
+
+            <form action="/verify-otp" method="POST">
+              <input type="hidden" name="email" value="{{ email }}">
+              <div class="mb-4 mx-auto" style="max-width: 280px;">
+                <label class="form-label text-navy small fw-700 text-uppercase ls-1">OTP Code</label>
+                <input type="text" name="otp" class="form-control py-3 text-center fw-bold fs-4 ls-1" placeholder="000000" pattern="[0-9]{6}" required style="border-radius: 12px; border: 2px solid #dee2e6;">
+                <p class="mt-2 text-muted small">Code expires in 5 minutes.</p>
+              </div>
+
+              <button type="submit" class="btn btn-teal w-100 py-2 fw-700 shadow-sm transition" style="border-radius: 8px;">
+                Verify & Proceed <i class="bi bi-check-circle-fill ms-1"></i>
+              </button>
+            </form>
+
+            <div class="text-center mt-4">
+              <p class="text-muted small mb-0"><a href="/forgot-password" class="text-navy fw-700 text-decoration-none"><i class="bi bi-arrow-repeat me-1"></i>Resend Code</a></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
