@@ -87,3 +87,19 @@ class Resource(SQLModel, table=True):
     url: str
     is_free: bool = True
     type: str = "article"  # article | video | course | book | tool
+
+
+class ChatThread(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id", index=True)
+    title: str = Field(default="New Chat")
+    created_at: datetime = Field(default_factory=get_vietnam_time)
+    updated_at: datetime = Field(default_factory=get_vietnam_time)
+
+
+class ChatMessage(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    thread_id: int = Field(foreign_key="chatthread.id", index=True)
+    role: str  # "user", "assistant", or "system"
+    content: str
+    created_at: datetime = Field(default_factory=get_vietnam_time)

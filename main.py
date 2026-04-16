@@ -22,7 +22,8 @@ from database import create_db_and_tables, get_session
 from models import (
     User, Assessment, MatchResult, Roadmap,
     Phase, Checkpoint, ProjectIdea, Resource,
-    PasswordResetToken, get_vietnam_time
+    PasswordResetToken, get_vietnam_time,
+    ChatThread, ChatMessage
 )
 from helpers import get_roadmap_data, get_model_response
 
@@ -802,3 +803,161 @@ async def toggle_checkpoint(
     return templates.TemplateResponse(request, "partials/checkpoint_btn.html", {
         "checkpoint": checkpoint,
     })
+
+
+# ── AI Chat (Socratic Tutor) ───────────────────────────────────────────────────
+
+from fastapi.responses import JSONResponse
+
+@app.get("/api/chat/threads")
+def get_chat_threads(request: Request, session: Session = Depends(get_session)):
+    user_id_str = request.cookies.get("session_token")
+    if not user_id_str:
+        return {"threads": []}
+    
+    threads = session.exec(
+        select(ChatThread)
+        .where(ChatThread.user_id == int(user_id_str))
+        .order_by(ChatThread.updated_at.desc())
+    ).all()
+    
+    return {"threads": [
+        {"id": t.id, "title": t.title, "updated_at": t.updated_at.isoformat()}
+        for t in threads
+    ]}
+
+@app.get("/api/chat/thread/{thread_id}")
+def get_chat_thread_messages(thread_id: int, session: Session = Depends(get_session)):
+    t = session.get(ChatThread, thread_id)
+    if not t:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    msgs = session.exec(select(ChatMessage).where(ChatMessage.thread_id == thread_id).order_by(ChatMessage.created_at)).all()
+    return {"thread_id": t.id, "title": t.title, "messages": [{"role": m.role, "content": m.content} for m in msgs]}
+
+@app.post("/api/chat")
+async def ai_chat(request: Request, session: Session = Depends(get_session)):
+    """
+    Socratic AI Tutor endpoint.
+    Expects JSON body: { "task": "...", "messages": [...], "want_answer": bool, "thread_id": 123 (optional) }
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    task_context: str = body.get("task", "").strip()
+    messages: list = body.get("messages", [])
+    want_answer: bool = body.get("want_answer", False)
+    thread_id = body.get("thread_id")
+
+    # DB Logic: check or create thread
+    thread = None
+    if thread_id:
+        thread = session.get(ChatThread, thread_id)
+    
+    if not thread:
+        user_id_str = request.cookies.get("session_token")
+        user_id = int(user_id_str) if user_id_str else None
+        
+        # Generate title from the first human message
+        first_human = next((m for m in messages if m.get("role") == "user"), None)
+        raw_title = first_human.get("content", "New Chat") if first_human else "New Chat"
+        words = raw_title.split()
+        title = " ".join(words[:5]) + ("..." if len(words) > 5 else "")
+        if task_context:
+            title = f"Task: {task_context[:20]}..."
+            
+        thread = ChatThread(title=title, user_id=user_id)
+        session.add(thread)
+        session.commit()
+        session.refresh(thread)
+    
+    thread_id = thread.id
+    
+    # Save user's latest message (which is the last one in the messages array if it's from user)
+    if messages and messages[-1].get("role") == "user":
+        latest_user_content = messages[-1].get("content", "")
+        # Avoid saving duplicate if it was already saved, but for simplicity we save the last one assuming frontend sends it fresh.
+        user_msg = ChatMessage(thread_id=thread_id, role="user", content=latest_user_content)
+        session.add(user_msg)
+        session.commit()
+
+    from langchain_openai import ChatOpenAI
+    from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7, streaming=False)
+
+    # ── System prompt ──────────────────────────────────────────────────────────
+    if task_context:
+        task_section = f"""
+The learner has clicked on the following learning task from their roadmap:
+---
+TASK: {task_context}
+---
+
+Start by:
+1. Briefly introducing what this topic is and why it matters (2-3 sentences).
+2. Breaking it down into 3-5 key sub-concepts the learner should understand.
+3. Suggesting a realistic study deadline / schedule (e.g., "You could master this in 1-2 weeks spending 1 hour/day").
+4. Then immediately shift to Socratic mode — ask the learner a probing question to assess their current understanding before diving deeper.
+"""
+    else:
+        task_section = "The learner is asking a general question about their IT career roadmap."
+
+    if want_answer:
+        answer_instruction = "The learner has explicitly asked for the answer or full explanation. Provide a clear, complete, and detailed explanation now."
+    else:
+        answer_instruction = (
+            "Use the Socratic method: guide the learner with probing questions, hints, and analogies. "
+            "Do NOT give full answers or solutions outright. Instead, ask questions that lead the learner to discover the answer themselves. "
+            "Only reveal the full answer if the learner explicitly says they give up, or asks 'tell me the answer', 'show me the solution', 'I want the answer', etc."
+        )
+
+    system_prompt = f"""You are TechPath AI Tutor — an expert IT mentor who uses the Socratic method to teach.
+
+Your personality:
+- Encouraging, patient, and intellectually curious
+- You believe learners grow more when they discover answers themselves
+- You celebrate small wins and redirect mistakes with questions, not corrections
+
+{task_section}
+
+Teaching approach:
+{answer_instruction}
+
+Additional rules:
+- Keep responses concise and focused (max 4-6 sentences per turn unless giving a full explanation)
+- Use simple analogies when introducing new concepts
+- If the learner is stuck, give a small hint, then ask another question
+- Format any code examples with markdown code blocks
+- Always end your response with either a question OR an encouraging next step
+- Always respond in English
+"""
+
+    # ── Build message history ──────────────────────────────────────────────────
+    lc_messages = [SystemMessage(content=system_prompt)]
+    for msg in messages:
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        if role == "user":
+            lc_messages.append(HumanMessage(content=content))
+        elif role == "assistant":
+            lc_messages.append(AIMessage(content=content))
+
+    # ── Call LLM ───────────────────────────────────────────────────────────────
+    try:
+        response = llm.invoke(lc_messages)
+        ai_reply = response.content
+        
+        # Save AI reply
+        ai_msg = ChatMessage(thread_id=thread_id, role="assistant", content=ai_reply)
+        session.add(ai_msg)
+        thread.updated_at = get_vietnam_time()
+        session.add(thread)
+        session.commit()
+        
+        return JSONResponse({"reply": ai_reply, "thread_id": thread_id})
+    except Exception as e:
+        print(f"AI Chat error: {e}")
+        raise HTTPException(status_code=500, detail="AI service unavailable. Please try again.")
+

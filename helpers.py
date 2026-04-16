@@ -76,14 +76,14 @@ def get_model_response(user_assessment: Assessment, session: Session):
     structured_llm = llm.with_structured_output(RoadmapOutput)
     
     prompt_text = f"""
-    You are an expert career counselor and technical mentor. 
-    Analyze the following user assessment for a tech career:
+    You are an elite expert career counselor, senior technical mentor, and curriculum designer. 
+    Analyze the following user assessment for a tech career in extensive detail:
     {user_assessment.raw_survey}
     
     The user is interested in or selected: {user_assessment.selected_path}
     
     Your task:
-    1. Evaluate the user's fit for ALL 10 of these tech careers and provide a score (0-100) for each:
+    1. Evaluate the user's fit for ALL 10 of these tech careers and provide a score (0-100) for each based on their assessment:
        - Software Engineer
        - Data Scientist
        - Cybersecurity Engineer
@@ -94,9 +94,15 @@ def get_model_response(user_assessment: Assessment, session: Session):
        - Artificial Intelligence (AI) Engineer
        - Game Developer
        - Human-Computer Interaction (HCI) Specialist
-    2. Recommend the best path (which should be one of the 10).
-    3. Create a detailed, personalized technical roadmap consisting of several phases.
-       For each phase, provide checkpoints, project ideas, and resources (with specific URLs if possible, or realistic placeholders).
+    2. Recommend the best path (which should be one of the 10) and generate an extremely detailed, exhaustive, and personalized technical roadmap.
+    3. The roadmap MUST contain multiple comprehensive phases (at least 4-6 phases).
+    4. For EACH phase, you MUST provide:
+       - An in-depth, long description (at least 3-4 sentences) explaining exactly what the user will learn and why it is important.
+       - Detailed checkpoints (milestones) with elaborate descriptions outlining specific skills to master. Produce at least 5-8 checkpoints per phase.
+       - Highly descriptive project ideas. Each project description should act as a mini-spec, detailing the problem statement, expected features, and technologies to use. Produce at least 2-3 complex projects per phase.
+       - An exhaustive list of resources (at least 4-6 resources per phase) including specific URLs (or realistic high-quality placeholders), mixed with courses, books, and articles.
+       
+    CRITICAL INSTRUCTION: Make the output as long, verbose, descriptive, and actionable as possible. Do not output brief or high-level summaries. Give concrete examples, detailed advice, and extensive technical requirements for every single item.
     """
     
     response: RoadmapOutput = structured_llm.invoke(prompt_text)
