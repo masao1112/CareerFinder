@@ -17,6 +17,8 @@ from fastapi import FastAPI, Request, Form, Depends, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
 from database import create_db_and_tables, get_session
 from models import (
@@ -882,8 +884,6 @@ async def ai_chat(request: Request, session: Session = Depends(get_session)):
         session.add(user_msg)
         session.commit()
 
-    from langchain_openai import ChatOpenAI
-    from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7, streaming=False)
 
