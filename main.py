@@ -1,35 +1,51 @@
 """
 main.py – TechPath AI FastAPI application
 """
-import json
-import uuid
 import hashlib
-from passlib.context import CryptContext
+import json
+import os
+import random
+import re
 import smtplib
 import ssl
-import random
 import string
+import urllib.parse
+import uuid
 from datetime import datetime, timedelta
-from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import Optional, List
-from fastapi import FastAPI, Request, Form, Depends, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from email.mime.text import MIMEText
+from typing import List, Optional
+
+from dotenv import load_dotenv
+load_dotenv()
+
+from fastapi import Depends, FastAPI, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlmodel import Session, select
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from passlib.context import CryptContext
+from sqlmodel import Session, select
 
 from database import create_db_and_tables, get_session
+from helpers import get_model_response, get_roadmap_data
 from models import (
-    User, Assessment, MatchResult, Roadmap,
-    Phase, Checkpoint, ProjectIdea, Resource,
-    PasswordResetToken, get_vietnam_time,
-    ChatThread, ChatMessage, UserMemory
+    Assessment,
+    ChatMessage,
+    ChatThread,
+    Checkpoint,
+    MatchResult,
+    PasswordResetToken,
+    Phase,
+    ProjectIdea,
+    Resource,
+    Roadmap,
+    User,
+    UserMemory,
+    get_vietnam_time,
 )
-from helpers import get_roadmap_data, get_model_response
-
-import urllib.parse
 
 # Cấu hình băm mật khẩu
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -45,52 +61,10 @@ templates.env.globals['GOOGLE_CLIENT_ID'] = GOOGLE_CLIENT_ID
 
 @app.on_event("startup")
 def on_startup():
+    # SQLModel tự tạo tất cả các bảng dựa trên models.py
+    # Hoạt động với cả SQLite (local) và PostgreSQL (production)
     create_db_and_tables()
-    
-    # Auto-migration for SQLite (ép buộc thêm cột nếu thiếu)
-    import sqlite3
-    try:
-        conn = sqlite3.connect("techpath.db")
-        cursor = conn.cursor()
-        cursor.execute("PRAGMA table_info(user)")
-        columns = [row[1] for row in cursor.fetchall()]
-        
-        if "password_hash" not in columns:
-            cursor.execute("ALTER TABLE user ADD COLUMN password_hash VARCHAR")
-            print("Migration: Added password_hash column to user table")
-            
-        if "created_at" not in columns:
-            cursor.execute("ALTER TABLE user ADD COLUMN created_at DATETIME")
-            print("Migration: Added created_at column to user table")
-            
-        # New Career Fields
-        if "current_status" not in columns:
-            cursor.execute("ALTER TABLE user ADD COLUMN current_status VARCHAR")
-        if "primary_skills" not in columns:
-            cursor.execute("ALTER TABLE user ADD COLUMN primary_skills VARCHAR")
-        if "career_goal" not in columns:
-            cursor.execute("ALTER TABLE user ADD COLUMN career_goal VARCHAR")
-        if "hours_per_week" not in columns:
-            cursor.execute("ALTER TABLE user ADD COLUMN hours_per_week INTEGER")
-            
-        # UserMemory table migration
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='usermemory'")
-        if not cursor.fetchone():
-            cursor.execute("""
-                CREATE TABLE usermemory (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL UNIQUE REFERENCES user(id),
-                    summary TEXT NOT NULL DEFAULT '',
-                    key_facts TEXT NOT NULL DEFAULT '[]',
-                    updated_at DATETIME
-                )
-            """)
-            print("Migration: Created usermemory table")
-
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"Migration error: {e}")
+    print("✅ Database tables created/verified.")
 
 # ── Pages ──────────────────────────────────────────────────────────────────────
 
@@ -176,9 +150,6 @@ async def google_auth(
     session: Session = Depends(get_session)
 ):
     try:
-        from google.oauth2 import id_token
-        from google.auth.transport import requests as google_requests
-        
         # Verify without strict audience here, or user must replace it. 
         # But we'll use a placeholder and catch Audience missing errors, but let's just 
         # instruct the user to update `YOUR_GOOGLE_CLIENT_ID`
@@ -300,8 +271,8 @@ async def settings_password_post(
 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 465
-SENDER_EMAIL = "tanhlucky102@gmail.com" 
-SENDER_PASSWORD = "fhbc wbub bxhu rlfr" 
+SENDER_EMAIL = os.getenv("SENDER_EMAIL", "tanhlucky102@gmail.com")
+SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "")
 
 def send_otp_email(to_email: str, otp_code: str):
     message = MIMEMultipart("alternative")
@@ -745,7 +716,6 @@ async def submit_assessment(
                 # Trích xuất số từ chuỗi ví dụ: "10-15 hours" -> 10
                 hours_str = general_profile.get("time_hours_per_week", "")
                 if hours_str:
-                    import re
                     match = re.search(r'\d+', hours_str)
                     if match:
                         target_user.hours_per_week = int(match.group())
@@ -822,8 +792,6 @@ async def toggle_checkpoint(
 
 
 # ── AI Chat (Socratic Tutor) ───────────────────────────────────────────────────
-
-from fastapi.responses import JSONResponse
 
 @app.get("/api/chat/threads")
 def get_chat_threads(request: Request, session: Session = Depends(get_session)):
