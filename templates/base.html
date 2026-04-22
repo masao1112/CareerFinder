@@ -798,10 +798,17 @@
 
     // ── Answer-trigger phrases ─────────────────────────────────────────────────
     var ANSWER_TRIGGERS = [
+      // English triggers
       'tell me the answer', 'show me the answer', 'give me the answer',
       'i want the answer', 'just tell me', 'i give up',
       'explain fully', 'explain everything', 'full explanation',
-      'show me everything', 'reveal the answer', 'what is the answer'
+      'show me everything', 'reveal the answer', 'what is the answer',
+      // Vietnamese triggers
+      'cho tôi biết đáp án', 'cho mình biết đáp án', 'nói cho tôi biết',
+      'tôi bỏ cuộc', 'mình bỏ cuộc', 'giải thích đầy đủ', 'giải thích chi tiết',
+      'đáp án là gì', 'câu trả lời là gì', 'cho tôi câu trả lời',
+      'cho mình câu trả lời', 'trả lời thẳng đi', 'nói thẳng đi',
+      'tôi muốn biết câu trả lời', 'mình muốn biết câu trả lời'
     ];
     function wantsAnswer(text) {
       var lower = text.toLowerCase();
@@ -985,12 +992,13 @@
       [body, bodyFs].forEach(function(b){ while(b.firstChild) b.removeChild(b.firstChild); });
       if (!taskText) {
         var defaultHtml = `
-          👋 Hi there! I'm <strong>AI Tutor</strong> by TechPath.<br>
-          Got any questions about your IT career roadmap?
+          👋 Xin chào! Tôi là <strong>AI Tutor</strong> của TechPath.<br>
+          <span style="opacity:.8;">Bạn có câu hỏi gì về lộ trình IT không? / Got any questions about your IT roadmap?</span>
           <div class="chat-chip-wrapper">
+            <button class="chat-chip" onclick="window.sendQuickMessage('Tôi đã học đến đâu rồi?')">📊 Tiến độ của tôi</button>
+            <button class="chat-chip" onclick="window.sendQuickMessage('Đố tôi một câu hỏi về kiến thức tôi đã học nhé.')">🎯 Kiểm tra kiến thức</button>
             <button class="chat-chip" onclick="window.sendQuickMessage('Can you give me a quick quiz to test my skills?')">🎯 Quiz me</button>
-            <button class="chat-chip" onclick="window.sendQuickMessage('Let\\'s do a short mock interview for my targeted job.')">💼 Mock Interview</button>
-            <button class="chat-chip" onclick="window.sendQuickMessage('What exactly should I learn first?')">🗺️ What's first?</button>
+            <button class="chat-chip" onclick="window.sendQuickMessage('Tôi nên học gì tiếp theo?')">🗺️ Học gì tiếp?</button>
           </div>
         `;
         var w = document.createElement('div');
@@ -1109,7 +1117,7 @@
     function createHint() {
       var h = document.createElement('div');
       h.style.cssText = 'font-size:.68rem;color:#aaa;padding:0 .7rem .35rem;text-align:center;background:#fff;';
-      h.textContent = 'Tip: say "give me the answer" anytime to get a full explanation';
+      h.textContent = 'Tip: nói "cho tôi câu trả lời" hoặc "give me the answer" để nhận giải thích đầy đủ 💡';
       return h;
     }
     document.getElementById('ai-chat-foot-mini').insertAdjacentElement('afterend', createHint());

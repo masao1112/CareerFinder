@@ -103,3 +103,17 @@ class ChatMessage(SQLModel, table=True):
     role: str  # "user", "assistant", or "system"
     content: str
     created_at: datetime = Field(default_factory=get_vietnam_time)
+
+
+class UserMemory(SQLModel, table=True):
+    """Per-user persistent memory for the AI chatbot.
+    Stores a rolling summary of what the user knows, has learned, and important facts.
+    Each user has exactly ONE memory record (upsert pattern).
+    """
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True, unique=True)
+    # Rolling text summary of the user's knowledge and progress
+    summary: str = Field(default="")
+    # JSON list of key facts extracted from conversations
+    key_facts: str = Field(default="[]")  # JSON: [{"fact": "...", "topic": "..."}]
+    updated_at: datetime = Field(default_factory=get_vietnam_time)
