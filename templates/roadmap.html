@@ -223,7 +223,6 @@
   }
 
   .checkpoint-item.done span {
-    color: var(--teal);
     font-weight: 500;
   }
 
@@ -310,6 +309,56 @@
     .branches-row {
       flex-direction: column;
     }
+  }
+
+  /* ── Task clickable items (open AI chatbot) ──────────────────────── */
+  .task-clickable {
+    cursor: pointer;
+    position: relative;
+    transition: color var(--transition), background var(--transition);
+    border-radius: 6px;
+    padding: 2px 4px;
+    margin: -2px -4px;
+  }
+  .task-clickable:hover {
+    color: var(--navy);
+    background: rgba(13, 59, 102, .06);
+  }
+  .task-clickable .ask-ai-chip {
+    display: none;
+    font-size: .67rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--navy), var(--navy-light));
+    color: #fff;
+    border-radius: 10px;
+    padding: 1px 7px;
+    margin-left: 6px;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  .task-clickable:hover .ask-ai-chip {
+    display: inline;
+  }
+
+  .proj-clickable {
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background var(--transition), box-shadow var(--transition);
+    padding: .3rem .4rem;
+    margin: -.3rem -.4rem;
+  }
+  .proj-clickable:hover {
+    background: rgba(13, 59, 102, .05);
+    box-shadow: 0 0 0 2px rgba(13, 59, 102, .1);
+  }
+  .proj-clickable:hover::after {
+    content: '✦ Ask AI Tutor';
+    display: block;
+    font-size: .7rem;
+    color: var(--navy);
+    font-weight: 700;
+    margin-top: 3px;
+    opacity: .7;
   }
 </style>
 {% endblock %}
@@ -515,7 +564,12 @@
                     <div class="checkpoint-item {% if checkpoint.is_complete %}done{% endif %}"
                       id="cp-row-{{ checkpoint.id }}">
                       {% include "partials/checkpoint_btn.html" %}
-                      <span>{{ checkpoint.description }}</span>
+                      <span
+                        class="task-clickable"
+                        onclick="window.openChatWithTask(this.dataset.task)"
+                        data-task="{{ checkpoint.description | e }}"
+                        title="Click to learn about this milestone with AI Tutor"
+                      >{{ checkpoint.description }}<span class="ask-ai-chip">✦ AI Tutor</span></span>
                     </div>
                     {% endfor %}
                   </div>
@@ -529,7 +583,12 @@
                   </div>
                   <div class="branch-body">
                     {% for proj in projects %}
-                    <div class="project-item">
+                    <div
+                      class="project-item proj-clickable"
+                      onclick="window.openChatWithTask(this.dataset.task)"
+                      data-task="Project: {{ proj.title }} — {{ proj.description | e }}"
+                      title="Click to explore this project with AI Tutor"
+                    >
                       <div class="proj-title">
                         <i class="bi bi-kanban-fill me-1" style="font-size:.8rem;"></i>{{ proj.title }}
                       </div>

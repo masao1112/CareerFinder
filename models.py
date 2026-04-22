@@ -87,3 +87,33 @@ class Resource(SQLModel, table=True):
     url: str
     is_free: bool = True
     type: str = "article"  # article | video | course | book | tool
+
+
+class ChatThread(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id", index=True)
+    title: str = Field(default="New Chat")
+    created_at: datetime = Field(default_factory=get_vietnam_time)
+    updated_at: datetime = Field(default_factory=get_vietnam_time)
+
+
+class ChatMessage(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    thread_id: int = Field(foreign_key="chatthread.id", index=True)
+    role: str  # "user", "assistant", or "system"
+    content: str
+    created_at: datetime = Field(default_factory=get_vietnam_time)
+
+
+class UserMemory(SQLModel, table=True):
+    """Per-user persistent memory for the AI chatbot.
+    Stores a rolling summary of what the user knows, has learned, and important facts.
+    Each user has exactly ONE memory record (upsert pattern).
+    """
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True, unique=True)
+    # Rolling text summary of the user's knowledge and progress
+    summary: str = Field(default="")
+    # JSON list of key facts extracted from conversations
+    key_facts: str = Field(default="[]")  # JSON: [{"fact": "...", "topic": "..."}]
+    updated_at: datetime = Field(default_factory=get_vietnam_time)

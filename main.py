@@ -1,32 +1,51 @@
 """
 main.py – TechPath AI FastAPI application
 """
-import json
-import uuid
 import hashlib
-from passlib.context import CryptContext
+import json
+import os
+import random
+import re
 import smtplib
 import ssl
-import random
 import string
+import urllib.parse
+import uuid
 from datetime import datetime, timedelta
-from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import Optional, List
-from fastapi import FastAPI, Request, Form, Depends, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from email.mime.text import MIMEText
+from typing import List, Optional
+
+from dotenv import load_dotenv
+load_dotenv()
+
+from fastapi import Depends, FastAPI, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_openai import ChatOpenAI
+from passlib.context import CryptContext
 from sqlmodel import Session, select
 
 from database import create_db_and_tables, get_session
+from helpers import get_model_response, get_roadmap_data
 from models import (
-    User, Assessment, MatchResult, Roadmap,
-    Phase, Checkpoint, ProjectIdea, Resource,
-    PasswordResetToken, get_vietnam_time
+    Assessment,
+    ChatMessage,
+    ChatThread,
+    Checkpoint,
+    MatchResult,
+    PasswordResetToken,
+    Phase,
+    ProjectIdea,
+    Resource,
+    Roadmap,
+    User,
+    UserMemory,
+    get_vietnam_time,
 )
-from helpers import get_roadmap_data, get_model_response
-
-import urllib.parse
 
 # Cấu hình băm mật khẩu
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -42,38 +61,10 @@ templates.env.globals['GOOGLE_CLIENT_ID'] = GOOGLE_CLIENT_ID
 
 @app.on_event("startup")
 def on_startup():
+    # SQLModel tự tạo tất cả các bảng dựa trên models.py
+    # Hoạt động với cả SQLite (local) và PostgreSQL (production)
     create_db_and_tables()
-    
-    # Auto-migration for SQLite (ép buộc thêm cột nếu thiếu)
-    import sqlite3
-    try:
-        conn = sqlite3.connect("techpath.db")
-        cursor = conn.cursor()
-        cursor.execute("PRAGMA table_info(user)")
-        columns = [row[1] for row in cursor.fetchall()]
-        
-        if "password_hash" not in columns:
-            cursor.execute("ALTER TABLE user ADD COLUMN password_hash VARCHAR")
-            print("Migration: Added password_hash column to user table")
-            
-        if "created_at" not in columns:
-            cursor.execute("ALTER TABLE user ADD COLUMN created_at DATETIME")
-            print("Migration: Added created_at column to user table")
-            
-        # New Career Fields
-        if "current_status" not in columns:
-            cursor.execute("ALTER TABLE user ADD COLUMN current_status VARCHAR")
-        if "primary_skills" not in columns:
-            cursor.execute("ALTER TABLE user ADD COLUMN primary_skills VARCHAR")
-        if "career_goal" not in columns:
-            cursor.execute("ALTER TABLE user ADD COLUMN career_goal VARCHAR")
-        if "hours_per_week" not in columns:
-            cursor.execute("ALTER TABLE user ADD COLUMN hours_per_week INTEGER")
-            
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"Migration error: {e}")
+    print("✅ Database tables created/verified.")
 
 # ── Pages ──────────────────────────────────────────────────────────────────────
 
@@ -159,9 +150,6 @@ async def google_auth(
     session: Session = Depends(get_session)
 ):
     try:
-        from google.oauth2 import id_token
-        from google.auth.transport import requests as google_requests
-        
         # Verify without strict audience here, or user must replace it. 
         # But we'll use a placeholder and catch Audience missing errors, but let's just 
         # instruct the user to update `YOUR_GOOGLE_CLIENT_ID`
@@ -283,8 +271,8 @@ async def settings_password_post(
 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 465
-SENDER_EMAIL = "tanhlucky102@gmail.com" 
-SENDER_PASSWORD = "fhbc wbub bxhu rlfr" 
+SENDER_EMAIL = os.getenv("SENDER_EMAIL", "tanhlucky102@gmail.com")
+SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "")
 
 def send_otp_email(to_email: str, otp_code: str):
     message = MIMEMultipart("alternative")
@@ -728,7 +716,6 @@ async def submit_assessment(
                 # Trích xuất số từ chuỗi ví dụ: "10-15 hours" -> 10
                 hours_str = general_profile.get("time_hours_per_week", "")
                 if hours_str:
-                    import re
                     match = re.search(r'\d+', hours_str)
                     if match:
                         target_user.hours_per_week = int(match.group())
@@ -802,3 +789,318 @@ async def toggle_checkpoint(
     return templates.TemplateResponse(request, "partials/checkpoint_btn.html", {
         "checkpoint": checkpoint,
     })
+
+
+# ── AI Chat (Socratic Tutor) ───────────────────────────────────────────────────
+
+@app.get("/api/chat/threads")
+def get_chat_threads(request: Request, session: Session = Depends(get_session)):
+    user_id_str = request.cookies.get("session_token")
+    if not user_id_str:
+        return {"threads": []}
+    
+    threads = session.exec(
+        select(ChatThread)
+        .where(ChatThread.user_id == int(user_id_str))
+        .order_by(ChatThread.updated_at.desc())
+    ).all()
+    
+    return {"threads": [
+        {"id": t.id, "title": t.title, "updated_at": t.updated_at.isoformat()}
+        for t in threads
+    ]}
+
+@app.get("/api/chat/thread/{thread_id}")
+def get_chat_thread_messages(thread_id: int, session: Session = Depends(get_session)):
+    t = session.get(ChatThread, thread_id)
+    if not t:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    msgs = session.exec(select(ChatMessage).where(ChatMessage.thread_id == thread_id).order_by(ChatMessage.created_at)).all()
+    return {"thread_id": t.id, "title": t.title, "messages": [{"role": m.role, "content": m.content} for m in msgs]}
+
+@app.post("/api/chat")
+async def ai_chat(request: Request, session: Session = Depends(get_session)):
+    """
+    Socratic AI Tutor endpoint.
+    Expects JSON body: { "task": "...", "messages": [...], "want_answer": bool, "thread_id": 123 (optional) }
+    Supports: language mirroring, per-user roadmap memory, isolated per-user memory.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    task_context: str = body.get("task", "").strip()
+    messages: list = body.get("messages", [])
+    want_answer: bool = body.get("want_answer", False)
+    thread_id = body.get("thread_id")
+
+    # ── Resolve current user ───────────────────────────────────────────────────
+    user_id_str = request.cookies.get("session_token")
+    current_user_id: Optional[int] = int(user_id_str) if user_id_str else None
+    current_user: Optional[User] = session.get(User, current_user_id) if current_user_id else None
+
+    # ── DB Logic: check or create thread ─────────────────────────────────────
+    thread = None
+    if thread_id:
+        thread = session.get(ChatThread, thread_id)
+
+    if not thread:
+        first_human = next((m for m in messages if m.get("role") == "user"), None)
+        raw_title = first_human.get("content", "New Chat") if first_human else "New Chat"
+        words = raw_title.split()
+        title = " ".join(words[:5]) + ("..." if len(words) > 5 else "")
+        if task_context:
+            title = f"Task: {task_context[:20]}..."
+
+        thread = ChatThread(title=title, user_id=current_user_id)
+        session.add(thread)
+        session.commit()
+        session.refresh(thread)
+
+    thread_id = thread.id
+
+    # Save user's latest message
+    if messages and messages[-1].get("role") == "user":
+        latest_user_content = messages[-1].get("content", "")
+        user_msg = ChatMessage(thread_id=thread_id, role="user", content=latest_user_content)
+        session.add(user_msg)
+        session.commit()
+
+    # ── Build per-user roadmap context ────────────────────────────────────────
+    roadmap_context_section = ""
+    user_memory_section = ""
+
+    if current_user_id:
+        # Fetch all roadmaps for this user
+        user_roadmaps = session.exec(
+            select(Roadmap).where(Roadmap.user_id == current_user_id).order_by(Roadmap.created_at.desc())
+        ).all()
+
+        if user_roadmaps:
+            roadmap_lines = []
+            for rm in user_roadmaps:
+                roadmap_lines.append(f"\n📋 Roadmap: '{rm.title}' — overall progress: {rm.overall_progress:.1f}%")
+                # Fetch phases + checkpoints for this roadmap
+                phases = session.exec(
+                    select(Phase).where(Phase.roadmap_id == rm.id).order_by(Phase.order_index)
+                ).all()
+                for ph in phases:
+                    cps = session.exec(
+                        select(Checkpoint).where(Checkpoint.phase_id == ph.id)
+                    ).all()
+                    total_cps = len(cps)
+                    done_cps = [c for c in cps if c.is_complete]
+                    done_count = len(done_cps)
+                    status_icon = "✅" if done_count == total_cps and total_cps > 0 else ("🔄" if done_count > 0 else "⏳")
+                    roadmap_lines.append(
+                        f"  {status_icon} Phase {ph.order_index}: '{ph.name}' — {done_count}/{total_cps} checkpoints completed"
+                    )
+                    for c in done_cps:
+                        roadmap_lines.append(f"      ✔ {c.description}")
+
+            roadmap_context_section = (
+                "\n\n=== USER'S LEARNING PROGRESS (from their roadmap) ==="
+                + "\n".join(roadmap_lines)
+                + "\n\nYou MUST use this data when the user asks about their progress, \"what have I learned\", "
+                  "\"where am I\", or similar. Reference specific completed checkpoints by name when relevant."
+            )
+
+        # Fetch per-user memory (AI-maintained rolling summary)
+        mem = session.exec(select(UserMemory).where(UserMemory.user_id == current_user_id)).first()
+        if mem and (mem.summary or mem.key_facts != "[]"):
+            try:
+                facts = json.loads(mem.key_facts or "[]")
+            except Exception:
+                facts = []
+            facts_text = ""
+            if facts:
+                facts_text = "\nKey facts I know about this user:\n" + "\n".join(
+                    f"  • [{f.get('topic','General')}] {f.get('fact','')}" for f in facts[:20]
+                )
+            if mem.summary:
+                user_memory_section = (
+                    "\n\n=== CONVERSATION MEMORY (what I remember about this user) ==="
+                    f"\nProfile & Progress Summary: \n{mem.summary}\n{facts_text}"
+                    "\n\nCRITICAL MUST-DO:\n"
+                    "- Adjust your tone and vocabulary to perfectly match the user's personality and pronouns (cách xưng hô: ví dụ tôi gọi bạn, em gọi anh, v.v.).\n"
+                    "- Use their known 'Knowledge Level' and 'Unmarked Progress' to automatically skip basics they already know.\n"
+                    "- Pick up right where they left off in their self-directed learning, even if they haven't explicitly marked it 'done' on the roadmap."
+                )
+            elif facts_text:
+                user_memory_section = (
+                    "\n\n=== CONVERSATION MEMORY ==="
+                    f"{facts_text}"
+                    "\n\nUse this to personalize responses."
+                )
+
+    # ── Detect language of user's latest message ──────────────────────────────
+    last_user_msg = ""
+    for m in reversed(messages):
+        if m.get("role") == "user":
+            last_user_msg = m.get("content", "")
+            break
+
+    # ── Build system prompt ───────────────────────────────────────────────────
+    if task_context:
+        task_section = f"""
+The learner has clicked on the following learning task from their roadmap:
+---
+TASK: {task_context}
+---
+
+Start by:
+1. Briefly introducing what this topic is and why it matters (2-3 sentences).
+2. Breaking it down into 3-5 key sub-concepts the learner should understand.
+3. Suggesting a realistic study deadline / schedule.
+4. Then immediately shift to Socratic mode — ask the learner a probing question to assess their current understanding before diving deeper.
+"""
+    else:
+        task_section = "The learner is asking a general question about their IT career roadmap."
+
+    if want_answer:
+        answer_instruction = "The learner has explicitly asked for the answer or full explanation. Provide a clear, complete, and detailed explanation now."
+    else:
+        answer_instruction = (
+            "Use the Socratic method: guide the learner with probing questions, hints, and analogies. "
+            "Do NOT give full answers or solutions outright. Instead, ask questions that lead the learner to discover the answer themselves. "
+            "Only reveal the full answer if the learner explicitly says they give up, or asks 'tell me the answer', 'show me the solution', 'I want the answer', etc."
+        )
+
+    user_name_line = f"The learner's name is: {current_user.name}." if current_user else ""
+
+    system_prompt = f"""You are TechPath AI Tutor — an expert IT mentor who uses the Socratic method to teach.
+
+Your personality:
+- Encouraging, patient, and intellectually curious
+- You believe learners grow more when they discover answers themselves
+- You celebrate small wins and redirect mistakes with questions, not corrections
+{user_name_line}
+
+{task_section}
+
+Teaching approach:
+{answer_instruction}
+
+Additional rules:
+- Keep responses concise and focused (max 4-6 sentences per turn unless giving a full explanation)
+- Use simple analogies when introducing new concepts
+- If the learner is stuck, give a small hint, then ask another question
+- Format any code examples with markdown code blocks
+- Always end your response with either a question OR an encouraging next step
+- LANGUAGE RULE: Detect the language of the user's most recent message and reply in that SAME language.
+  If the user writes in Vietnamese → reply in Vietnamese.
+  If the user writes in English → reply in English.
+  Do NOT switch languages unless the user switches first.
+{roadmap_context_section}
+{user_memory_section}
+"""
+
+    # ── Build message history ──────────────────────────────────────────────────
+    lc_messages = [SystemMessage(content=system_prompt)]
+    for msg in messages:
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        if role == "user":
+            lc_messages.append(HumanMessage(content=content))
+        elif role == "assistant":
+            lc_messages.append(AIMessage(content=content))
+
+    # ── Call LLM ───────────────────────────────────────────────────────────────
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7, streaming=False)
+    try:
+        response = llm.invoke(lc_messages)
+        ai_reply = response.content
+
+        # Save AI reply to DB
+        ai_msg = ChatMessage(thread_id=thread_id, role="assistant", content=ai_reply)
+        session.add(ai_msg)
+        thread.updated_at = get_vietnam_time()
+        session.add(thread)
+        session.commit()
+
+        # ── Update per-user memory (background extraction) ────────────────────
+        if current_user_id and len(messages) % 4 == 0:  # update every 4 turns
+            _update_user_memory(current_user_id, messages, ai_reply, session)
+
+        return JSONResponse({"reply": ai_reply, "thread_id": thread_id})
+    except Exception as e:
+        print(f"AI Chat error: {e}")
+        raise HTTPException(status_code=500, detail="AI service unavailable. Please try again.")
+
+
+def _update_user_memory(user_id: int, messages: list, latest_reply: str, session: Session):
+    """Extract key facts from conversation and update UserMemory for this user.
+    Uses a lightweight LLM call to summarise only new information."""
+    try:
+        # Fetch or create memory record for this user
+        mem = session.exec(select(UserMemory).where(UserMemory.user_id == user_id)).first()
+        if not mem:
+            mem = UserMemory(user_id=user_id, summary="", key_facts="[]")
+            session.add(mem)
+            session.commit()
+            session.refresh(mem)
+
+        # Build a condensed conversation snapshot (last 10 turns)
+        recent = messages[-10:]
+        conv_text = "\n".join(
+            f"{m['role'].upper()}: {m['content']}" for m in recent
+        ) + f"\nASSISTANT: {latest_reply}"
+
+        extraction_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0)
+        extraction_prompt = f"""We are updating the persistent memory profile of the user based on their latest conversation.
+
+Current Profile Summary:
+{mem.summary}
+
+Recent Conversation:
+{conv_text}
+
+Task: Update the user's profile summary based on the new conversation snippet.
+1. Extract NEW factual statements (e.g. name, specific interests, tech stacks) as a list of dicts.
+2. Provide an UPDATED comprehensive profile summary capturing:
+   - The user's personality and how they address themselves/you (cách xưng hô: ví dụ dùng "tôi", "mình", "em", "anh", "bạn", v.v.).
+   - What knowledge topics they have asked about and their CURRENT knowledge level.
+   - Any NEW topics they have learned or demonstrated understanding of (unmarked progress) in this chat, even if they didn't click "mark done".
+
+Return ONLY valid JSON with the following structure:
+{{
+   "updated_summary": "Paragraph summarizing personality, pronouns, knowledge level, and recent unmarked progress. Combine old and new info.",
+   "new_facts": [
+      {{"topic": "...", "fact": "..."}}
+   ]
+}}
+"""
+        extraction_response = extraction_llm.invoke([HumanMessage(content=extraction_prompt)])
+        raw_json = extraction_response.content.strip()
+        # Strip markdown fences if present
+        if raw_json.startswith("```"):
+            if "```json" in raw_json:
+                raw_json = raw_json.split("```json", 1)[-1].rsplit("```", 1)[0].strip()
+            else:
+                raw_json = raw_json.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+        
+        parsed = json.loads(raw_json)
+        updated_summary = parsed.get("updated_summary", "")
+        new_facts = parsed.get("new_facts", [])
+        if not isinstance(new_facts, list):
+            new_facts = []
+
+        existing_facts: list = json.loads(mem.key_facts or "[]")
+        # Merge: add new facts, avoid near-duplicates (simple text check), cap at 30
+        existing_texts = {f.get("fact", "").lower() for f in existing_facts}
+        for nf in new_facts:
+            if nf.get("fact", "").lower() not in existing_texts:
+                existing_facts.append(nf)
+                existing_texts.add(nf.get("fact", "").lower())
+        existing_facts = existing_facts[-30:]  # keep latest 30
+
+        if updated_summary:
+            mem.summary = updated_summary
+        mem.key_facts = json.dumps(existing_facts, ensure_ascii=False)
+        mem.updated_at = get_vietnam_time()
+        session.add(mem)
+        session.commit()
+    except Exception as ex:
+        print(f"Memory update error (non-critical): {ex}")
+

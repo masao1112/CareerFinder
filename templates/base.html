@@ -314,11 +314,76 @@
                   transform .3s ease;
     }
     .ai-chat-panel.open {
-      max-height: 500px;
+      max-height: 520px;
       opacity: 1;
       pointer-events: all;
       transform: translateY(0) scale(1);
     }
+
+    /* ── Fullscreen overlay ──────────────────────────────────────────── */
+    .ai-chat-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 28, 52, .55);
+      backdrop-filter: blur(4px);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .3s ease;
+    }
+    .ai-chat-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .ai-chat-fullscreen {
+      width: min(860px, 96vw);
+      height: min(88vh, 780px);
+      background: #fff;
+      border-radius: 24px;
+      box-shadow: 0 32px 80px rgba(8,28,52,.35);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transform: translateY(20px) scale(.97);
+      transition: transform .35s cubic-bezier(.4,0,.2,1);
+    }
+    .ai-chat-overlay.open .ai-chat-fullscreen {
+      transform: translateY(0) scale(1);
+    }
+    /* Fullscreen body gets much more space */
+    .ai-chat-overlay .ai-chat-body {
+      max-height: none !important;
+      min-height: 0 !important;
+      flex: 1;
+      padding: 1.4rem 2rem;
+      gap: .8rem;
+    }
+    .ai-chat-overlay .ai-chat-foot {
+      padding: 1rem 1.5rem;
+    }
+    .ai-chat-overlay .ai-chat-foot input {
+      font-size: .95rem;
+      padding: .65rem 1rem;
+    }
+    .ai-chat-overlay .ai-chat-foot button {
+      width: 44px; height: 44px;
+      font-size: 1.1rem;
+    }
+    .ai-chat-overlay .chat-bubble-bot,
+    .ai-chat-overlay .chat-bubble-user {
+      font-size: .92rem;
+      max-width: 78%;
+    }
+    .ai-chat-overlay .ai-chat-head {
+      padding: 1rem 1.5rem;
+    }
+    .ai-chat-overlay .ai-chat-head .ch-title {
+      font-size: 1.05rem;
+    }
+
     .ai-chat-head {
       background: linear-gradient(135deg, var(--navy), var(--navy-light));
       color: #fff;
@@ -340,6 +405,8 @@
       border-radius: 8px;
       padding: 2px 7px;
     }
+    .ai-chat-head .ch-expand,
+    .ai-chat-head .ch-compress,
     .ai-chat-head .ch-close {
       background: rgba(255,255,255,.15);
       border: none;
@@ -351,13 +418,87 @@
       font-size: .85rem;
       transition: background .2s;
     }
-    .ai-chat-head .ch-close:hover { background: rgba(255,255,255,.28); }
+    .ai-chat-head .ch-expand:hover,
+    .ai-chat-head .ch-compress:hover,
+    .ai-chat-head .ch-close:hover,
+    .ai-chat-head .ch-btn:hover { background: rgba(255,255,255,.28); }
+
+    .ai-chat-head .ch-btn {
+      background: rgba(255,255,255,.15);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: .85rem;
+      transition: background .2s;
+    }
+
+    /* History Drawer */
+    .ch-history-drawer {
+      position: absolute;
+      top: 0; bottom: 0; left: 0;
+      width: 260px;
+      background: #f8f9fb;
+      border-right: 1px solid var(--border);
+      transform: translateX(-100%);
+      transition: transform .3s cubic-bezier(.4,0,.2,1);
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 4px 0 15px rgba(0,0,0,.05);
+    }
+    .ch-history-drawer.open {
+      transform: translateX(0);
+    }
+    .ch-history-header {
+      padding: .85rem 1.1rem;
+      font-weight: 700;
+      font-size: .9rem;
+      color: var(--navy);
+      border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .ch-history-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: .5rem;
+      display: flex;
+      flex-direction: column;
+      gap: .3rem;
+    }
+    .ch-thread-btn {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .6rem;
+      text-align: left;
+      font-size: .8rem;
+      cursor: pointer;
+      color: var(--text);
+      transition: all .2s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ch-thread-btn:hover, .ch-thread-btn.active {
+      border-color: var(--navy);
+      background: rgba(13,59,102,.05);
+    }
+    .ch-thread-date {
+      font-size: .65rem;
+      color: var(--gray-soft);
+      display: block;
+      margin-top: 2px;
+    }
+
     .ai-chat-body {
       flex: 1;
       padding: 1rem;
       overflow-y: auto;
       min-height: 220px;
-      max-height: 300px;
+      max-height: 340px;
       display: flex;
       flex-direction: column;
       gap: .6rem;
@@ -371,7 +512,7 @@
       border-radius: 0 14px 14px 14px;
       padding: .55rem .85rem;
       font-size: .84rem;
-      line-height: 1.55;
+      line-height: 1.6;
       color: var(--text);
       max-width: 88%;
       box-shadow: 0 1px 4px rgba(0,0,0,.06);
@@ -430,6 +571,30 @@
     @keyframes blink {
       0%, 80%, 100% { opacity: .2; transform: scale(.9); }
       40%           { opacity: 1;  transform: scale(1.1); }
+    }
+    
+    /* Quick suggestion chips */
+    .chat-chip-wrapper {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem;
+      margin-top: .5rem;
+    }
+    .chat-chip {
+      background: rgba(13,59,102,.05);
+      color: var(--navy);
+      border: 1px solid rgba(13,59,102,.15);
+      border-radius: 20px;
+      padding: .35rem .75rem;
+      font-size: .75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .chat-chip:hover {
+      background: var(--navy);
+      color: #fff;
+      border-color: var(--navy);
     }
   </style>
 
@@ -496,13 +661,28 @@
   </footer>
 
   <!-- AI Tutor FAB + Chat Panel (global, all pages) -->
+  <!-- AI Tutor FAB + mini panel -->
   <div class="ai-fab-wrap" id="ai-fab-wrap">
-    <!-- Chat panel (above button) -->
-    <div class="ai-chat-panel" id="ai-chat-panel" role="dialog" aria-label="AI Tutor chat">
+    <!-- Mini chat panel (above button) -->
+    <div class="ai-chat-panel" id="ai-chat-panel" role="dialog" aria-label="AI Tutor chat" style="position:relative;">
+      
+      <!-- Drawer (Mini) -->
+      <div class="ch-history-drawer" id="ch-history-drawer-mini">
+        <div class="ch-history-header">
+          <span>Chat History</span>
+          <button class="btn-close small" style="font-size:.6rem" onclick="document.getElementById('ch-history-drawer-mini').classList.remove('open')"></button>
+        </div>
+        <div class="ch-history-list" id="ch-history-list-mini"></div>
+      </div>
+
       <div class="ai-chat-head">
         <i class="bi bi-robot fs-5"></i>
         <span class="ch-title">AI Tutor</span>
-        <span class="ch-badge">BETA</span>
+        <button class="ch-btn" id="ai-chat-new-mini" aria-label="New Chat" title="New Chat"><i class="bi bi-plus-lg"></i></button>
+        <button class="ch-btn" id="ai-chat-hist-mini" aria-label="History" title="Chat History"><i class="bi bi-clock-history"></i></button>
+        <button class="ch-expand" id="ai-chat-expand" aria-label="Expand chat" title="Mở rộng toàn màn hình">
+          <i class="bi bi-arrows-fullscreen"></i>
+        </button>
         <button class="ch-close" id="ai-chat-close" aria-label="Close chat"><i class="bi bi-x-lg"></i></button>
       </div>
       <div class="ai-chat-body" id="ai-chat-body">
@@ -511,7 +691,7 @@
           Got any questions about your IT career roadmap?
         </div>
       </div>
-      <div class="ai-chat-foot">
+      <div class="ai-chat-foot" id="ai-chat-foot-mini">
         <input type="text" id="ai-chat-input" placeholder="Ask me anything..." autocomplete="off" />
         <button id="ai-chat-send" aria-label="Send"><i class="bi bi-send-fill"></i></button>
       </div>
@@ -519,11 +699,45 @@
 
     <!-- FAB pill button -->
     <div class="ai-fab-btn-wrap">
-      <span class="fab-badge">BETA</span>
       <button class="ai-fab-btn" id="ai-fab-btn" aria-label="Open AI Tutor">
         <i class="bi bi-robot fab-icon"></i>
         <span class="fab-label">AI Tutor – Have a question?</span>
       </button>
+    </div>
+  </div>
+
+  <!-- AI Tutor FULLSCREEN overlay -->
+  <div class="ai-chat-overlay" id="ai-chat-overlay" role="dialog" aria-modal="true" aria-label="AI Tutor fullscreen">
+    <!-- backdrop click closes -->
+    <div style="position:absolute;inset:0;" id="ai-overlay-backdrop"></div>
+    <div class="ai-chat-fullscreen" style="position:relative; overflow:hidden;">
+      
+      <!-- Drawer (FS) -->
+      <div class="ch-history-drawer" id="ch-history-drawer-fs">
+        <div class="ch-history-header">
+          <span>Chat History</span>
+          <button class="btn-close small" style="font-size:.6rem" onclick="document.getElementById('ch-history-drawer-fs').classList.remove('open')"></button>
+        </div>
+        <div class="ch-history-list" id="ch-history-list-fs"></div>
+      </div>
+
+      <div class="ai-chat-head">
+        <i class="bi bi-robot fs-5"></i>
+        <span class="ch-title">AI Tutor <span style="font-weight:400;opacity:.7;font-size:.82rem;">– Socratic Learning Mode</span></span>
+        <button class="ch-btn" id="ai-chat-new-fs" aria-label="New Chat" title="New Chat"><i class="bi bi-plus-lg"></i></button>
+        <button class="ch-btn" id="ai-chat-hist-fs" aria-label="History" title="Chat History"><i class="bi bi-clock-history"></i></button>
+        <button class="ch-compress" id="ai-chat-compress" aria-label="Thu nhỏ" title="Thu nhỏ">
+          <i class="bi bi-fullscreen-exit"></i>
+        </button>
+        <button class="ch-close" id="ai-overlay-close" aria-label="Đóng"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="ai-chat-body" id="ai-chat-body-fs">
+        <!-- messages cloned here when expanded -->
+      </div>
+      <div class="ai-chat-foot">
+        <input type="text" id="ai-chat-input-fs" placeholder="Ask AI Tutor anything..." autocomplete="off" />
+        <button id="ai-chat-send-fs" aria-label="Send"><i class="bi bi-send-fill"></i></button>
+      </div>
     </div>
   </div>
 
@@ -533,77 +747,386 @@
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <!-- Google Sign-In -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- Marked.js for markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
   {% block extra_js %}{% endblock %}
 
   <script>
   (function () {
-    var btn   = document.getElementById('ai-fab-btn');
-    var panel = document.getElementById('ai-chat-panel');
-    var close = document.getElementById('ai-chat-close');
-    var input = document.getElementById('ai-chat-input');
-    var send  = document.getElementById('ai-chat-send');
-    var body  = document.getElementById('ai-chat-body');
+    // ── Element refs ───────────────────────────────────────────────────────────
+    var btn      = document.getElementById('ai-fab-btn');
+    var panel    = document.getElementById('ai-chat-panel');
+    var close    = document.getElementById('ai-chat-close');
+    var input    = document.getElementById('ai-chat-input');
+    var send     = document.getElementById('ai-chat-send');
+    var body     = document.getElementById('ai-chat-body');
+    var expandBtn= document.getElementById('ai-chat-expand');
 
+    // Fullscreen refs
+    var overlay      = document.getElementById('ai-chat-overlay');
+    var backdrop     = document.getElementById('ai-overlay-backdrop');
+    var compressBtn  = document.getElementById('ai-chat-compress');
+    var overlayClose = document.getElementById('ai-overlay-close');
+    var inputFs      = document.getElementById('ai-chat-input-fs');
+    var sendFs       = document.getElementById('ai-chat-send-fs');
+    var bodyFs       = document.getElementById('ai-chat-body-fs');
+
+    // Sidebar refs
+    var histBtnMini  = document.getElementById('ai-chat-hist-mini');
+    var histBtnFs    = document.getElementById('ai-chat-hist-fs');
+    var newBtnMini   = document.getElementById('ai-chat-new-mini');
+    var newBtnFs     = document.getElementById('ai-chat-new-fs');
+    var drawerMini   = document.getElementById('ch-history-drawer-mini');
+    var drawerFs     = document.getElementById('ch-history-drawer-fs');
+    var histListMini = document.getElementById('ch-history-list-mini');
+    var histListFs   = document.getElementById('ch-history-list-fs');
+
+    // ── State ──────────────────────────────────────────────────────────────────
+    var savedSession = null;
+    try { savedSession = JSON.parse(sessionStorage.getItem('ai_tutor_session')); } catch(e) {}
+
+    var activeThreadId = savedSession ? savedSession.threadId : null;
+    var chatHistory = savedSession ? savedSession.history : [];
+    var currentTask = savedSession ? savedSession.task : '';
+    var isLoading   = false;
+    var isFullscreen= false;
+
+    function saveSession() {
+      try { sessionStorage.setItem('ai_tutor_session', JSON.stringify({history: chatHistory, task: currentTask, threadId: activeThreadId})); }
+      catch(e) {}
+    }
+
+    // ── Answer-trigger phrases ─────────────────────────────────────────────────
+    var ANSWER_TRIGGERS = [
+      // English triggers
+      'tell me the answer', 'show me the answer', 'give me the answer',
+      'i want the answer', 'just tell me', 'i give up',
+      'explain fully', 'explain everything', 'full explanation',
+      'show me everything', 'reveal the answer', 'what is the answer',
+      // Vietnamese triggers
+      'cho tôi biết đáp án', 'cho mình biết đáp án', 'nói cho tôi biết',
+      'tôi bỏ cuộc', 'mình bỏ cuộc', 'giải thích đầy đủ', 'giải thích chi tiết',
+      'đáp án là gì', 'câu trả lời là gì', 'cho tôi câu trả lời',
+      'cho mình câu trả lời', 'trả lời thẳng đi', 'nói thẳng đi',
+      'tôi muốn biết câu trả lời', 'mình muốn biết câu trả lời'
+    ];
+    function wantsAnswer(text) {
+      var lower = text.toLowerCase();
+      return ANSWER_TRIGGERS.some(function(t){ return lower.indexOf(t) !== -1; });
+    }
+
+    // ── Markdown renderer ──────────────────────────────────────────────────────
+    function renderMarkdown(text) {
+      if (typeof marked !== 'undefined') return marked.parse(text, { breaks: true });
+      return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    }
+    function styleCode(el) {
+      el.querySelectorAll('code').forEach(function(c){
+        if (!c.closest('pre')) c.style.cssText = 'background:#f0f0f0;padding:1px 5px;border-radius:4px;font-size:.82em;';
+      });
+      el.querySelectorAll('pre').forEach(function(p){
+        p.style.cssText = 'background:#1e1e2e;color:#cdd6f4;padding:.7rem;border-radius:8px;overflow-x:auto;font-size:.78em;margin:.4rem 0;';
+        p.querySelectorAll('code').forEach(function(c){ c.style.cssText=''; });
+      });
+    }
+
+    // ── Active panel helpers ───────────────────────────────────────────────────
+    function activeBody()  { return isFullscreen ? bodyFs  : body;  }
+    function activeInput() { return isFullscreen ? inputFs : input; }
+    function activeSend()  { return isFullscreen ? sendFs  : send;  }
+
+    // ── Append bubble to active panel ──────────────────────────────────────────
+    function appendBubble(html, who, isMarkdown) {
+      var ab = activeBody();
+      var div = document.createElement('div');
+      div.className = who === 'user' ? 'chat-bubble-user' : 'chat-bubble-bot';
+      if (isMarkdown) { div.innerHTML = renderMarkdown(html); styleCode(div); }
+      else            { div.textContent = html; }
+      ab.appendChild(div);
+      ab.scrollTop = ab.scrollHeight;
+      return div;
+    }
+
+    // ── Typing indicator ───────────────────────────────────────────────────────
+    function showTyping() {
+      var ab = activeBody();
+      var div = document.createElement('div');
+      div.className = 'chat-bubble-bot';
+      div.id = 'typing-indicator';
+      div.style.cssText = 'display:flex;gap:4px;align-items:center;padding:.4rem .8rem;';
+      div.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
+      ab.appendChild(div); ab.scrollTop = ab.scrollHeight;
+    }
+    function removeTyping() {
+      [body, bodyFs].forEach(function(b){
+        var t = b.querySelector('#typing-indicator'); if(t) t.remove();
+      });
+    }
+
+    // ── Task banner ────────────────────────────────────────────────────────────
+    function makeBanner(taskText) {
+      var banner = document.createElement('div');
+      banner.className = 'chat-task-banner';
+      banner.style.cssText = 'background:linear-gradient(135deg,#eef3ff,#f0fdf4);border:1px solid #c7d7ff;border-radius:10px;padding:.5rem .75rem;font-size:.75rem;color:#1e3a8a;margin-bottom:.4rem;line-height:1.4;flex-shrink:0;';
+      banner.innerHTML = '<span style="font-weight:700;display:block;margin-bottom:2px;"><i class="bi bi-bookmark-check-fill me-1" style="color:#6366f1"></i>Studying:</span>'
+        + '<span style="opacity:.85;">' + taskText.substring(0,140) + (taskText.length>140?'...':'') + '</span>';
+      return banner;
+    }
+    function refreshBanners() {
+      [body, bodyFs].forEach(function(b){
+        b.querySelectorAll('.chat-task-banner').forEach(function(x){ x.remove(); });
+        if (currentTask) b.insertBefore(makeBanner(currentTask), b.firstChild);
+      });
+    }
+
+    // ── Clone messages between panels ──────────────────────────────────────────
+    function cloneMessagesTo(target) {
+      var source = (target === bodyFs) ? body : bodyFs;
+      while (target.firstChild) target.removeChild(target.firstChild);
+      Array.from(source.childNodes).forEach(function(node){
+        target.appendChild(node.cloneNode(true));
+      });
+      target.scrollTop = target.scrollHeight;
+    }
+
+    // ── Mini panel open/close ──────────────────────────────────────────────────
     function openChat() {
       panel.classList.add('open');
       btn.setAttribute('aria-expanded', 'true');
-      setTimeout(function () { input && input.focus(); }, 350);
+      setTimeout(function(){ input && input.focus(); }, 350);
     }
     function closeChat() {
       panel.classList.remove('open');
       btn.setAttribute('aria-expanded', 'false');
     }
 
-    btn.addEventListener('click', function () {
+    // ── Fullscreen open/close ──────────────────────────────────────────────────
+    function openFullscreen() {
+      isFullscreen = true;
+      cloneMessagesTo(bodyFs);
+      overlay.classList.add('open');
+      document.body.style.overflow = 'hidden';
+      setTimeout(function(){ inputFs && inputFs.focus(); }, 300);
+    }
+    function closeFullscreen() {
+      isFullscreen = false;
+      cloneMessagesTo(body);
+      overlay.classList.remove('open');
+      document.body.style.overflow = '';
+      drawerFs.classList.remove('open');
+    }
+
+    // ── Button wiring ──────────────────────────────────────────────────────────
+    btn.addEventListener('click', function(){
       panel.classList.contains('open') ? closeChat() : openChat();
     });
     close.addEventListener('click', closeChat);
-
-    // Close when clicking outside
-    document.addEventListener('click', function (e) {
-      var wrap = document.getElementById('ai-fab-wrap');
-      if (wrap && !wrap.contains(e.target)) closeChat();
+    expandBtn.addEventListener('click', function(e){ e.stopPropagation(); openFullscreen(); });
+    compressBtn.addEventListener('click', function(){ closeFullscreen(); openChat(); });
+    overlayClose.addEventListener('click', closeFullscreen);
+    backdrop.addEventListener('click', closeFullscreen);
+    document.addEventListener('keydown', function(e){
+      if (e.key === 'Escape' && isFullscreen) closeFullscreen();
+    });
+    document.addEventListener('click', function(e){
+      var miniWrap = document.getElementById('ai-fab-wrap');
+      var clkMini = (miniWrap && miniWrap.contains(e.target));
+      if (!isFullscreen && !clkMini) closeChat();
     });
 
-    // Send message (placeholder — real AI hook goes here later)
-    function appendBubble(text, who) {
-      var div = document.createElement('div');
-      div.className = who === 'user' ? 'chat-bubble-user' : 'chat-bubble-bot';
-      div.textContent = text;
-      body.appendChild(div);
-      body.scrollTop = body.scrollHeight;
+    // Sidebar wiring
+    function loadThreads() {
+      fetch('/api/chat/threads').then(function(r){ return r.json(); }).then(function(data){
+        var html = '';
+        (data.threads||[]).forEach(function(t){
+          var isActive = (t.id == activeThreadId) ? 'active' : '';
+          var date = new Date(t.updated_at).toLocaleString([], {month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit'});
+          html += '<div class="ch-thread-btn '+isActive+'" onclick="window.loadThread('+t.id+')">' +
+                  t.title + '<span class="ch-thread-date">'+date+'</span></div>';
+        });
+        histListMini.innerHTML = html;
+        histListFs.innerHTML = html;
+      });
     }
-    function showTyping() {
-      var div = document.createElement('div');
-      div.className = 'chat-bubble-bot';
-      div.id = 'typing-indicator';
-      div.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
-      body.appendChild(div);
-      body.scrollTop = body.scrollHeight;
+    histBtnMini.addEventListener('click', function(e){ e.stopPropagation(); drawerMini.classList.toggle('open'); loadThreads(); });
+    histBtnFs.addEventListener('click', function(e){ e.stopPropagation(); drawerFs.classList.toggle('open'); loadThreads(); });
+    
+    function startNewChat() {
+       activeThreadId = null;
+       currentTask = '';
+       chatHistory = [];
+       saveSession();
+       drawerMini.classList.remove('open');
+       drawerFs.classList.remove('open');
+       initSavedHistory();
     }
-    function removeTyping() {
-      var t = document.getElementById('typing-indicator');
-      if (t) t.remove();
-    }
+    newBtnMini.addEventListener('click', startNewChat);
+    newBtnFs.addEventListener('click', startNewChat);
 
-    function handleSend() {
-      var text = input.value.trim();
-      if (!text) return;
-      appendBubble(text, 'user');
-      input.value = '';
+    window.loadThread = function(tid) {
+      if (isLoading) return;
+      isLoading = true;
+      activeThreadId = tid;
+      currentTask = '';
+      saveSession();
+      drawerMini.classList.remove('open');
+      drawerFs.classList.remove('open');
+      [body, bodyFs].forEach(function(b){ while(b.firstChild) b.removeChild(b.firstChild); });
       showTyping();
-      // TODO: replace with real API call
-      setTimeout(function () {
-        removeTyping();
-        appendBubble('AI chat is coming soon! Please check back later. 🚀', 'bot');
-      }, 1200);
+
+      fetch('/api/chat/thread/' + tid).then(function(r){return r.json()})
+      .then(function(data) {
+         chatHistory = data.messages || [];
+         saveSession();
+         removeTyping();
+         initSavedHistory();
+      })
+      .finally(function(){ isLoading = false; refreshBanners(); });
+    };
+
+    // ── Reset chat ─────────────────────────────────────────────────────────────
+    function resetChat(taskText) {
+      chatHistory = [];
+      currentTask = taskText || '';
+      saveSession();
+      [body, bodyFs].forEach(function(b){ while(b.firstChild) b.removeChild(b.firstChild); });
+      if (!taskText) {
+        var defaultHtml = `
+          👋 Xin chào! Tôi là <strong>AI Tutor</strong> của TechPath.<br>
+          <span style="opacity:.8;">Bạn có câu hỏi gì về lộ trình IT không? / Got any questions about your IT roadmap?</span>
+          <div class="chat-chip-wrapper">
+            <button class="chat-chip" onclick="window.sendQuickMessage('Tôi đã học đến đâu rồi?')">📊 Tiến độ của tôi</button>
+            <button class="chat-chip" onclick="window.sendQuickMessage('Đố tôi một câu hỏi về kiến thức tôi đã học nhé.')">🎯 Kiểm tra kiến thức</button>
+            <button class="chat-chip" onclick="window.sendQuickMessage('Can you give me a quick quiz to test my skills?')">🎯 Quiz me</button>
+            <button class="chat-chip" onclick="window.sendQuickMessage('Tôi nên học gì tiếp theo?')">🗺️ Học gì tiếp?</button>
+          </div>
+        `;
+        var w = document.createElement('div');
+        w.className = 'chat-bubble-bot';
+        w.innerHTML = defaultHtml;
+        body.appendChild(w);
+      }
     }
 
+    // ── Render saved history ───────────────────────────────────────────────────
+    function initSavedHistory() {
+      if (chatHistory.length === 0 && !currentTask) {
+        // Initialize default welcome message if entirely new
+        resetChat('');
+        return;
+      }
+      [body, bodyFs].forEach(function(b){ while(b.firstChild) b.removeChild(b.firstChild); });
+      if (currentTask) refreshBanners();
+      chatHistory.forEach(function(msg) {
+        var who = msg.role === 'user' ? 'user' : 'bot';
+        var isMd = msg.role === 'assistant';
+        var div = document.createElement('div');
+        div.className = who === 'user' ? 'chat-bubble-user' : 'chat-bubble-bot';
+        if (isMd) { div.innerHTML = renderMarkdown(msg.content); styleCode(div); }
+        else      { div.textContent = msg.content; }
+        body.appendChild(div);
+      });
+      body.scrollTop = body.scrollHeight;
+    }
+
+    // ── Call AI ────────────────────────────────────────────────────────────────
+    function callAI(userText, isInitial) {
+      var want = (!isInitial) && wantsAnswer(userText);
+      isLoading = true;
+      activeSend().disabled = true;
+      activeInput().disabled = true;
+      showTyping();
+
+      fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          task: currentTask,
+          messages: chatHistory.slice(-20),
+          want_answer: want,
+          thread_id: activeThreadId
+        })
+      })
+      .then(function(r){
+        if (!r.ok) return r.json().then(function(e){ throw new Error(e.detail||'Server error'); });
+        return r.json();
+      })
+      .then(function(data){
+        removeTyping();
+        var reply = data.reply || 'Sorry, something went wrong. Please try again.';
+        if (data.thread_id) activeThreadId = data.thread_id;
+        chatHistory.push({ role: 'assistant', content: reply });
+        saveSession();
+        appendBubble(reply, 'bot', true);
+      })
+      .catch(function(err){
+        removeTyping();
+        appendBubble('⚠️ ' + (err.message || 'Connection error. Please try again.'), 'bot', false);
+      })
+      .finally(function(){
+        isLoading = false;
+        activeSend().disabled = false;
+        activeInput().disabled = false;
+        activeInput().focus();
+      });
+    }
+
+    // ── Handle user message ────────────────────────────────────────────────────
+    function handleSend(overrideText) {
+      if (isLoading) return;
+      var ai = activeInput();
+      var text = (typeof overrideText === 'string') ? overrideText : ai.value.trim();
+      if (!text) return;
+      appendBubble(text, 'user', false);
+      chatHistory.push({ role: 'user', content: text });
+      saveSession();
+      if (!overrideText) ai.value = '';
+      callAI(text, false);
+    }
+    
+    // Quick send (for chips)
+    window.sendQuickMessage = function(text) {
+      handleSend(text);
+    };
+
+    // Mini send
     send.addEventListener('click', handleSend);
-    input.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') handleSend();
+    input.addEventListener('keydown', function(e){
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
     });
+    // Fullscreen send
+    sendFs.addEventListener('click', handleSend);
+    inputFs.addEventListener('keydown', function(e){
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+    });
+
+    // ── Public: open with task ─────────────────────────────────────────────────
+    window.openChatWithTask = function(taskText) {
+      activeThreadId = null;
+      chatHistory = [];
+      currentTask = taskText || '';
+      saveSession();
+      refreshBanners();
+      openFullscreen(); // Make it pop up full screen automatically!
+      
+      // Auto-trigger AI to introduce the task without wiping history
+      callAI('I am starting the task: ' + taskText, true);
+    };
+
+    // ── Hint bar ───────────────────────────────────────────────────────────────
+    function createHint() {
+      var h = document.createElement('div');
+      h.style.cssText = 'font-size:.68rem;color:#aaa;padding:0 .7rem .35rem;text-align:center;background:#fff;';
+      h.textContent = 'Tip: nói "cho tôi câu trả lời" hoặc "give me the answer" để nhận giải thích đầy đủ 💡';
+      return h;
+    }
+    document.getElementById('ai-chat-foot-mini').insertAdjacentElement('afterend', createHint());
+    document.querySelector('.ai-chat-fullscreen .ai-chat-foot').insertAdjacentElement('afterend', createHint());
+
+    // Initial render
+    initSavedHistory();
   })();
   </script>
 </body>
 </html>
+

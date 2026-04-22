@@ -5,12 +5,13 @@ jinja2
 python-multipart
 langchain
 langchain-openai
+langchain-community
+langchain-classic
 python-dotenv
 google-auth
 requests
 passlib[bcrypt]
 bcrypt==4.0.1
 itsdangerous
-langchain-community
+psycopg2-binary
 duckduckgo-search
-langchain-classic
