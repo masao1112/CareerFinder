@@ -6,9 +6,6 @@ from pydantic import BaseModel, Field
 from typing import List
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
-from langchain_community.tools import DuckDuckGoSearchRun
-from langchain_classic.agents import AgentExecutor, create_openai_tools_agent
-from langchain_classic import hub
 
 load_dotenv()
 
@@ -76,39 +73,20 @@ def get_roadmap_data(roadmap_id: int, session: Session):
 # Get model response
 def get_model_response(user_assessment: Assessment, session: Session):
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
-    
-    # 1. Search Agent to gather information
-    search = DuckDuckGoSearchRun()
-    tools = [search]
-    
-    prompt = hub.pull("hwchase17/openai-tools-agent")
-    agent = create_openai_tools_agent(llm, tools, prompt)
-    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
-    
-    selected_path = user_assessment.selected_path
-    
-    print(f"Researching: {selected_path}")
-    research_results = agent_executor.invoke({
-        "input": f"Search for the latest, most detailed technical roadmap, essential skills, and high-quality learning resources for a career in {selected_path}. Focus on specific tools, frameworks, and real-world project ideas. Return a summary of your findings."
-    })
-    
-    information_gathered = research_results["output"]
-    
-    # 2. Generate structured output using gathered info
     structured_llm = llm.with_structured_output(RoadmapOutput)
-    
+
+    selected_path = user_assessment.selected_path
+    print(f"Generating roadmap for: {selected_path}")
+
     prompt_text = f"""
-    You are an elite expert career counselor, senior technical mentor, and curriculum designer. 
-    Analyze the following user assessment for a tech career in extensive detail:
-    
+    You are an elite expert career counselor, senior technical mentor, and curriculum designer with deep knowledge of the tech industry in 2024-2025.
+    Analyze the following user assessment and create a comprehensive, personalized tech career roadmap.
+
     User Assessment Data:
     {user_assessment.raw_survey}
-    
+
     Selected Path: {selected_path}
-    
-    Researched Information:
-    {information_gathered}
-    
+
     Your task:
     1. Evaluate the user's fit for ALL 10 of these tech careers and provide a score (0-100) for each based on their assessment:
        - Software Engineer
@@ -121,19 +99,22 @@ def get_model_response(user_assessment: Assessment, session: Session):
        - Artificial Intelligence (AI) Engineer
        - Game Developer
        - Human-Computer Interaction (HCI) Specialist
+
     2. Recommend the best path (which should be one of the 10) and generate an extremely detailed, exhaustive, and personalized technical roadmap.
+
     3. The roadmap MUST contain multiple comprehensive phases (at least 4-6 phases).
+
     4. For EACH phase, you MUST provide:
-       - An in-depth, long description (at least 3-4 sentences) explaining exactly what the user will learn and why it is important.
-       - Detailed checkpoints (milestones) with elaborate descriptions outlining specific skills to master. Produce at least 5-8 checkpoints per phase.
-       - Highly descriptive project ideas. Each project description should act as a mini-spec, detailing the problem statement, expected features, and technologies to use. Produce at least 2-3 complex projects per phase.
-       - An exhaustive list of resources (at least 4-6 resources per phase) including specific URLs (or realistic high-quality placeholders), mixed with courses, books, and articles.
-       
-    CRITICAL INSTRUCTION: Make the output as long, verbose, descriptive, and actionable as possible. Do not output brief or high-level summaries. Give concrete examples, detailed advice, and extensive technical requirements for every single item.
+       - An in-depth description (at least 3-4 sentences) explaining what the user will learn and why it is important.
+       - Detailed checkpoints (milestones) with specific skills to master. Produce at least 5-8 checkpoints per phase.
+       - Highly descriptive project ideas acting as mini-specs with problem statement, features, and technologies. Produce 2-3 projects per phase.
+       - An exhaustive list of real, high-quality resources (4-6 per phase) with actual URLs from sites like Coursera, Udemy, freeCodeCamp, MDN, official docs, etc. Mix courses, books, articles, and documentation.
+
+    CRITICAL: Make the output as detailed, descriptive, and actionable as possible. Give concrete examples and extensive technical requirements for every item.
     """
-    
+
     response: RoadmapOutput = structured_llm.invoke(prompt_text)
-    
+
     match = MatchResult(
         assessment_id=user_assessment.id,
         top_matches=json.dumps([{"path": j.path, "score": j.score} for j in response.job_scores]),
@@ -141,7 +122,7 @@ def get_model_response(user_assessment: Assessment, session: Session):
     )
     session.add(match)
     session.commit()
-    
+
     roadmap = Roadmap(
         user_id=user_assessment.user_id,
         assessment_id=user_assessment.id,
@@ -151,7 +132,7 @@ def get_model_response(user_assessment: Assessment, session: Session):
     session.add(roadmap)
     session.commit()
     session.refresh(roadmap)
-    
+
     for i, phase_data in enumerate(response.phases):
         phase = Phase(
             roadmap_id=roadmap.id,
@@ -162,14 +143,14 @@ def get_model_response(user_assessment: Assessment, session: Session):
         session.add(phase)
         session.commit()
         session.refresh(phase)
-        
+
         for cp in phase_data.checkpoints:
             checkpoint = Checkpoint(
                 phase_id=phase.id,
                 description=cp.description
             )
             session.add(checkpoint)
-            
+
         for proj in phase_data.projects:
             project = ProjectIdea(
                 phase_id=phase.id,
@@ -177,7 +158,7 @@ def get_model_response(user_assessment: Assessment, session: Session):
                 description=proj.description
             )
             session.add(project)
-            
+
         for res in phase_data.resources:
             resource = Resource(
                 phase_id=phase.id,
@@ -187,6 +168,6 @@ def get_model_response(user_assessment: Assessment, session: Session):
                 type=res.type
             )
             session.add(resource)
-            
+
     session.commit()
     return roadmap.id
