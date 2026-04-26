@@ -101,16 +101,14 @@ def get_model_response(user_assessment: Assessment, session: Session):
        - Human-Computer Interaction (HCI) Specialist
 
     2. Recommend the best path (which should be one of the 10) and generate an extremely detailed, exhaustive, and personalized technical roadmap.
-
     3. The roadmap MUST contain multiple comprehensive phases (at least 4-6 phases).
-
     4. For EACH phase, you MUST provide:
        - An in-depth description (at least 3-4 sentences) explaining what the user will learn and why it is important.
        - Detailed checkpoints (milestones) with specific skills to master. Produce at least 5-8 checkpoints per phase.
        - Highly descriptive project ideas acting as mini-specs with problem statement, features, and technologies. Produce 2-3 projects per phase.
-       - An exhaustive list of real, high-quality resources (4-6 per phase) with actual URLs from sites like Coursera, Udemy, freeCodeCamp, MDN, official docs, etc. Mix courses, books, articles, and documentation.
+       - An exhaustive list of real, high-quality resources (4-6 per phase) with actual URLs from sites like Coursera, Udemy, freeCodeCamp, MDN, official docs, etc.
 
-    CRITICAL: Make the output as detailed, descriptive, and actionable as possible. Give concrete examples and extensive technical requirements for every item.
+    CRITICAL: Make the output as detailed, descriptive, and actionable as possible.
     """
 
     response: RoadmapOutput = structured_llm.invoke(prompt_text)
