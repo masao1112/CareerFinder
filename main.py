@@ -52,11 +52,13 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Cấu hình Google
 GOOGLE_CLIENT_ID = "551158881077-om6jbecbdlhh4eg0179je47k3jbf3s8i.apps.googleusercontent.com"
+BASE_URL = os.getenv("BASE_URL", "http://localhost:8000").rstrip("/")
 
 app = FastAPI(title="TechPath AI")
 templates = Jinja2Templates(directory="templates")
 templates.env.globals['unquote'] = urllib.parse.unquote
 templates.env.globals['GOOGLE_CLIENT_ID'] = GOOGLE_CLIENT_ID
+templates.env.globals['BASE_URL'] = BASE_URL
 
 
 @app.on_event("startup")
@@ -1020,7 +1022,9 @@ Additional rules:
         session.commit()
 
         # ── Update per-user memory (background extraction) ────────────────────
-        if current_user_id and len(messages) % 4 == 0:  # update every 4 turns
+        # Count only user messages (total len is always odd, so % 4 == 0 never fires)
+        _user_msg_count = sum(1 for m in messages if m.get("role") == "user")
+        if current_user_id and _user_msg_count > 0 and _user_msg_count % 4 == 0:
             _update_user_memory(current_user_id, messages, ai_reply, session)
 
         return JSONResponse({"reply": ai_reply, "thread_id": thread_id})
