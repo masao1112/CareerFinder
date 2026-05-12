@@ -6,7 +6,10 @@ import sqlalchemy as sa
 
 
 def get_vietnam_time():
-    return datetime.now(timezone(timedelta(hours=7)))
+    # Naive datetime in Vietnam local time (UTC+7).
+    # Stored as-is in `timestamp without time zone` columns so Supabase Studio
+    # and queries see VN clock time directly, not UTC or session-converted.
+    return datetime.now(timezone(timedelta(hours=7))).replace(tzinfo=None)
 
 
 class User(SQLModel, table=True):

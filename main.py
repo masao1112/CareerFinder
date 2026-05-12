@@ -229,7 +229,7 @@ async def settings_profile_post(
     session.commit()
     session.refresh(user)
     
-    roadmaps = session.exec(select(Roadmap).where(Roadmap.user_id == user.id).all())
+    roadmaps = session.exec(select(Roadmap).where(Roadmap.user_id == user.id).order_by(Roadmap.created_at.desc())).all()
     return templates.TemplateResponse(request, "settings.html", {
         "user": user, 
         "roadmaps": roadmaps,
@@ -353,6 +353,7 @@ async def verify_otp_post(
     otp: str = Form(...),
     session: Session = Depends(get_session)
 ):
+    email = email.strip().lower()
     user = session.exec(select(User).where(User.email == email)).first()
     if not user:
         return templates.TemplateResponse(request, "verify_otp.html", {"email": email, "error": "Đã có lỗi xảy ra"})
@@ -388,7 +389,8 @@ async def reset_password_post(
 ):
     if password != confirm_password:
         return templates.TemplateResponse(request, "reset_password.html", {"email": email, "token": token, "error": "Mật khẩu không khớp"})
-        
+
+    email = email.strip().lower()
     user = session.exec(select(User).where(User.email == email)).first()
     if not user:
         return templates.TemplateResponse(request, "login.html", {"error": "Lỗi hệ thống"})
@@ -417,6 +419,29 @@ async def assessment(request: Request):
     return templates.TemplateResponse(request, "assessment.html", {
         "step": 1,
     })
+
+
+DEMO_USERS = {
+    "alice": "alice@example.com",
+    "bob": "bob@example.com",
+    "carol": "carol@example.com",
+}
+
+
+@app.get("/demo/{name}")
+async def demo_redirect(name: str, session: Session = Depends(get_session)):
+    email = DEMO_USERS.get(name.lower())
+    if not email:
+        raise HTTPException(status_code=404, detail="Demo not found")
+    user = session.exec(select(User).where(User.email == email)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail=f"Demo user '{name}' has not been seeded yet")
+    roadmap = session.exec(
+        select(Roadmap).where(Roadmap.user_id == user.id).order_by(Roadmap.created_at.desc())
+    ).first()
+    if not roadmap:
+        raise HTTPException(status_code=404, detail=f"Demo roadmap for '{name}' not found")
+    return RedirectResponse(url=f"/roadmap/{roadmap.id}", status_code=303)
 
 
 @app.get("/roadmap/{roadmap_id}", response_class=HTMLResponse)

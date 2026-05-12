@@ -10,7 +10,7 @@ from models import (
     User, Assessment, MatchResult, Roadmap,
     Phase, Checkpoint, ProjectIdea, Resource,
 )
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 
 def seed():
@@ -20,6 +20,14 @@ def seed():
     hashed_pwd = pwd_context.hash("password123")
 
     with Session(engine) as session:
+        # Idempotency: skip seeding entirely if any demo user already exists
+        existing = session.exec(
+            select(User).where(User.email.in_(["alice@example.com", "bob@example.com", "carol@example.com"]))
+        ).first()
+        if existing:
+            print(f"ℹ Demo users already seeded (found {existing.email}). Skipping.")
+            return
+
         # ── User 1: Alice – Software Engineer ──────────────────────────────
         alice = User(name="Alice Johnson", email="alice@example.com", password_hash=hashed_pwd)
         session.add(alice)
@@ -365,7 +373,7 @@ def seed():
         add_resource(cp4.id, "Levels.fyi – Salary Research", "https://www.levels.fyi/", is_free=True, rtype="tool")
         session.commit()
 
-    print("✅ Seed complete — 3 users, 3 roadmaps, all phases/checkpoints/resources added.")
+    print("Seed complete - 3 users, 3 roadmaps, all phases/checkpoints/resources added.")
 
 
 if __name__ == "__main__":

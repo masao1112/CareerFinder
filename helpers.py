@@ -43,7 +43,7 @@ class RoadmapOutput(BaseModel):
 def get_roadmap_data(roadmap_id: int, session: Session):
     roadmap = session.get(Roadmap, roadmap_id)
     if not roadmap:
-        return None, None, None, None
+        return None, None, None
 
     user = session.get(User, roadmap.user_id)
     phases = session.exec(

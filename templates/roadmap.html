@@ -397,18 +397,9 @@
           <!-- Demo tab switcher -->
           <div class="demo-tabs d-flex gap-2 flex-wrap">
             <span style="font-size:.78rem; opacity:.6; align-self:center;">View demo:</span>
-            <a href="/roadmap/1"
-              class="btn btn-sm {% if roadmap.id == 1 %}btn-light text-navy{% else %}btn-outline-light{% endif %}">Alice
-              · SW Eng</a>
-            <a href="/roadmap/2"
-              class="btn btn-sm {% if roadmap.id == 2 %}btn-light text-navy{% else %}btn-outline-light{% endif %}">Bob ·
-              Data Sci</a>
-            <a href="/roadmap/3"
-              class="btn btn-sm {% if roadmap.id == 3 %}btn-light text-navy{% else %}btn-outline-light{% endif %}">Carol
-              · AI Eng</a>
-            {% if roadmap.id > 3 %}
-            <span class="btn btn-sm btn-warning text-navy fw-700">Your Roadmap</span>
-            {% endif %}
+            <a href="/demo/alice" class="btn btn-sm btn-outline-light">Alice · SW Eng</a>
+            <a href="/demo/bob" class="btn btn-sm btn-outline-light">Bob · Data Sci</a>
+            <a href="/demo/carol" class="btn btn-sm btn-outline-light">Carol · AI Eng</a>
           </div>
         </div>
 
