@@ -51,7 +51,7 @@ from models import (
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Cấu hình Google
-GOOGLE_CLIENT_ID = "551158881077-om6jbecbdlhh4eg0179je47k3jbf3s8i.apps.googleusercontent.com"
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "YOUR_GOOGLE_CLIENT_ID")  # Bắt buộc nếu muốn dùng Google Sign-In
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000").rstrip("/")
 
 app = FastAPI(title="TechPath AI")

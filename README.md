@@ -51,6 +51,62 @@ SENDER_EMAIL=youremail@gmail.com
 SENDER_PASSWORD=your-gmail-app-password
 ```
 
+#### 📋 Hướng dẫn chi tiết từng biến môi trường
+
+##### **OPENAI_API_KEY** (Bắt buộc)
+Cần thiết để tạo roadmap AI và chatbot Socratic Tutor.
+1. Truy cập https://platform.openai.com/account/api-keys
+2. Đăng nhập/tạo tài khoản OpenAI (có thể dùng Gmail hoặc GitHub)
+3. Nhấp **"Create new secret key"** → Copy key
+4. Dán vào `.env`: `OPENAI_API_KEY=sk-...`
+5. **Lưu ý:** Giữ bí mật key, không commit lên Git
+
+##### **DATABASE_URL** (Tuỳ chọn)
+- **Không set:** Hệ thống tự động dùng **SQLite local** (`techpath.db`) – phù hợp dev/demo
+- **Muốn dùng PostgreSQL (Supabase):**
+  1. Tạo project tại https://supabase.com
+  2. Vào **Settings → Database** → Copy **Connection string** (chọn mode `Transaction`)
+  3. Format: `postgresql://[user]:[password]@[host]:[port]/[database]`
+  4. Dán vào `.env`: `DATABASE_URL=postgresql://...`
+  5. Khi deploy lên production khuyên dùng Supabase thay SQLite
+
+##### **BASE_URL** (Tuỳ chọn)
+- **Local dev (mặc định):** `http://localhost:8000` – để trống hoặc bỏ dòng này
+- **Production (Render):** `https://your-app-name.onrender.com` – cần thiết cho Google OAuth redirect đúng
+
+##### **SENDER_EMAIL & SENDER_PASSWORD** (Tuỳ chọn)
+Cần thiết để gửi OTP reset mật khẩu qua email. **Chỉ hỗ trợ Gmail + App Password** (không phải mật khẩu tài khoản thường).
+
+**Cách setup Gmail:**
+1. **Bật 2-Factor Authentication:**
+   - Vào https://myaccount.google.com/security
+   - Chọn **2-Step Verification** → Bật nó
+   
+2. **Tạo App Password:**
+   - Quay lại Security → Cuộn xuống **App passwords** (chỉ hiện khi bật 2FA)
+   - Chọn **Mail** → **Windows Computer** (hoặc thiết bị của bạn)
+   - Google tạo **16 ký tự password** → Copy (không có dấu cách)
+   
+3. **Cập nhật `.env`:**
+   ```env
+   SENDER_EMAIL=your-gmail@gmail.com
+   SENDER_PASSWORD=xxxx xxxx xxxx xxxx
+   ```
+   (Paste đúng như Google cấp, kể cả dấu cách)
+
+4. **Test gửi email:** Bấm "Forgot Password" trên login page để test
+
+##### **GOOGLE_CLIENT_ID** (Google OAuth - hardcode trong code)
+Hiện tại hardcode trong `main.py:54` cho demo. Để dùng credential Google khác:
+1. Tạo OAuth 2.0 credentials tại https://console.cloud.google.com
+2. Tạo **OAuth 2.0 Client ID** (loại Web application)
+3. Thêm **Authorized redirect URIs:**
+   - `http://localhost:8000/auth/google/callback` (dev)
+   - `https://your-app-name.onrender.com/auth/google/callback` (production)
+4. Copy **Client ID** → Mở `main.py` dòng 54 → Replace `GOOGLE_CLIENT_ID` value
+
+---
+
 ### 3. Seed dữ liệu demo (tuỳ chọn)
 
 Tạo 3 user demo Alice/Bob/Carol với roadmap mẫu:
@@ -75,11 +131,11 @@ Truy cập **http://127.0.0.1:8000**.
 
 3 user mẫu có roadmap sẵn (mật khẩu đăng nhập đều là `password123`):
 
-| User | Email | Path |
-|------|-------|------|
-| Alice Johnson | alice@example.com | Software Engineer (9 tháng) |
-| Bob Martinez | bob@example.com | Data Scientist (6 tháng) |
-| Carol Chen | carol@example.com | AI Engineer (12 tháng) |
+| User | Email | Password | Path |
+|------|-------|------|------|
+| Alice Johnson | alice@example.com | password123 | Software Engineer (9 tháng) |
+| Bob Martinez | bob@example.com | password123 |Data Scientist (6 tháng) |
+| Carol Chen | carol@example.com | password123 |AI Engineer (12 tháng) |
 
 Xem trực tiếp roadmap qua route động (không phụ thuộc ID):
 
@@ -98,7 +154,6 @@ Xem trực tiếp roadmap qua route động (không phụ thuộc ID):
 ├── database.py          # SQLAlchemy engine, fallback SQLite/PostgreSQL
 ├── helpers.py           # get_roadmap_data + get_model_response (gọi OpenAI sinh roadmap)
 ├── seed.py              # Seed demo Alice/Bob/Carol (idempotent)
-├── migrate_tz_vn.py     # Migration 1-shot: shift timestamp cũ +7h sang giờ VN
 ├── requirements.txt
 ├── Procfile             # Cấu hình deploy Render
 ├── runtime.txt
@@ -140,9 +195,16 @@ Xem trực tiếp roadmap qua route động (không phụ thuộc ID):
 
 Route `/demo/<name>` (alice/bob/carol) lookup theo email cố định rồi redirect tới roadmap thật. Nhờ vậy demo hoạt động bất kể ID auto-increment là 1, 3, hay 99.
 
-### Google OAuth
+### Đăng nhập Google OAuth
 
-`GOOGLE_CLIENT_ID` đang hardcode trong `main.py:54`. Muốn dùng credential khác, thay trực tiếp hoặc đẩy ra env var.
+**⚠️ Cần setup trước khi dùng tính năng "Đăng nhập bằng Google"**
+
+Chi tiết xem phần **[GOOGLE_CLIENT_ID](#google_client_id-google-oauth---hardcode-trong-code)** ở trên.
+
+**Tóm tắt:**
+1. Tạo OAuth 2.0 credentials tại https://console.cloud.google.com
+2. Thêm redirect URI: `http://localhost:8000/auth/google/callback` (dev) hoặc `https://your-app-name.onrender.com/auth/google/callback` (prod)
+3. Copy Client ID → Cập nhật `GOOGLE_CLIENT_ID` trong `main.py:54`
 
 ---
 
@@ -152,6 +214,10 @@ Route `/demo/<name>` (alice/bob/carol) lookup theo email cố định rồi redi
 |-----|------------|----------|
 | `psycopg2.OperationalError: tenant/user not found` | DATABASE_URL Supabase sai hoặc project đã bị xoá | Kiểm tra lại connection string trong Supabase Dashboard |
 | `Failed to generate roadmap from AI model` (500 khi submit assessment) | Thiếu/sai `OPENAI_API_KEY` | Set env var đúng và restart server |
-| `Gửi email thất bại` (quên mật khẩu) | Gmail chặn login mật khẩu thường | Bật 2FA Gmail rồi tạo **App Password**, dùng password đó cho `SENDER_PASSWORD` |
+| `Gửi email thất bại` (quên mật khẩu) | Gmail chặn login mật khẩu thường hoặc chưa bật 2FA | Bật 2FA Gmail rồi tạo **App Password**, dùng password đó cho `SENDER_PASSWORD` |
+| `SMTPAuthenticationError: 535 5.7.8 Username and Password not accepted` | SENDER_PASSWORD sai hoặc chưa tạo App Password | Xem hướng dẫn **SENDER_EMAIL & SENDER_PASSWORD** ở trên |
 | Bấm "See Demo" ra 404 | Chưa chạy `python seed.py` | Chạy seed |
 | Roadmap.html lỗi 500 với ID không tồn tại | (Đã fix) | – |
+| `OIDC error` khi login Google (local dev) | Redirect URI chưa config hoặc GOOGLE_CLIENT_ID sai | Kiểm tra [BASE_URL](#base_url-tuỳ-chọn) và cập nhật Google Console redirect URIs |
+| `.env` không được load, env var trống | File `.env` chưa được tạo hoặc đặt sai vị trí | Tạo file `.env` ở **thư mục gốc** (cùng cấp `main.py`), không phải subfolder |
+| `FileNotFoundError: .env` khi chạy `python seed.py` | .env chưa tồn tại | Tạo `.env` từ template [.env.example](.env.example) trước khi chạy bất kỳ script nào |
