@@ -26,11 +26,24 @@ TechPath AI là web app full-stack giúp người dùng khám phá lộ trình n
 
 ### 1. Cài dependency
 
-Cần Python 3.9 trở lên. Sau khi clone repo:
+Cần Python 3.9 trở lên. Sau khi clone repo, **khuyến khích tạo môi trường ảo (virtual environment)** để tránh xung đột thư viện:
 
-```bash
-pip install -r requirements.txt
-```
+1. **Tạo và kích hoạt môi trường ảo:**
+   - **Windows:**
+     ```bash
+     python -m venv venv
+     venv\Scripts\activate
+     ```
+   - **Mac/Linux:**
+     ```bash
+     python3 -m venv venv
+     source venv/bin/activate
+     ```
+
+2. **Cài đặt thư viện:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 ### 2. Cấu hình biến môi trường
 
